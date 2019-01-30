@@ -14,7 +14,7 @@ abstract public class ServerThread extends Thread {
         super();
         this.host = host;
         this.port = port;
-        this.setName(this.getServerName() + "Thread");
+        this.setName(this.getServerName() + " Thread");
     }
 
     @Override

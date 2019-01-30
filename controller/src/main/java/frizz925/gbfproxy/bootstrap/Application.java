@@ -5,27 +5,42 @@ import frizz925.gbfproxy.bootstrap.threads.ProxyThread;
 import frizz925.gbfproxy.bootstrap.threads.ServerThread;
 import frizz925.gbfproxy.utils.Logger;
 
-class Application {
+public class Application {
+    public static final String APP_NAME = "Granblue Proxy";
+    public static final String APP_VERSION = "0.1-alpha";
+
+    public static String getFullName() {
+        return APP_NAME + " " + APP_VERSION;
+    }
+
     public static void main(String[] args) {
         new Application().start();
     }
 
     public void start() {
-        startController();
-        startProxy();
+        try {
+            Thread controller = startController();
+            Thread proxy = startProxy((ServerThread) controller);
+            controller.join();
+            proxy.join();
+        } catch (InterruptedException e) {
+            // do nothing
+        }
     }
 
-    public void startController() {
+    public ServerThread startController() {
         ServerThread controller = new ControllerThread(8000);
         Logger.log("Starting controller server...");
         controller.start();
         Logger.log("Controller server listening at :" + controller.port);
+        return controller;
     }
 
-    public void startProxy() {
-        ServerThread proxy = new ProxyThread(8080);
+    public ServerThread startProxy(ServerThread backend) {
+        ServerThread proxy = new ProxyThread(8080, backend.port);
         Logger.log("Starting proxy server...");
         proxy.start();
         Logger.log("Proxy server listening at :" + proxy.port);
+        return proxy;
     }
 }

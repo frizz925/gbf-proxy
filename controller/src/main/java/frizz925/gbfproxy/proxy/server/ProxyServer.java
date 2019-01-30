@@ -13,7 +13,12 @@ import frizz925.gbfproxy.proxy.channels.ReadHandler;
 import frizz925.gbfproxy.utils.Logger;
 
 public class ProxyServer implements ServerInterface {
+    protected int backendPort;
     protected boolean running = false;
+
+    public ProxyServer(int backendPort) {
+        this.backendPort = backendPort;
+    }
 
     @Override
     public void start(int port) {
@@ -32,10 +37,10 @@ public class ProxyServer implements ServerInterface {
     public void startServer(String host, int port) throws Exception {
         Selector selector = Selector.open();
         ServerSocketChannel server = ServerSocketChannel.open();
+        ProxyHandler handler = new ProxyHandler(this.backendPort);
         server.bind(new InetSocketAddress(host, port));
         server.configureBlocking(false);
-        server.register(selector, SelectionKey.OP_ACCEPT, new ProxyHandler());
-
+        server.register(selector, SelectionKey.OP_ACCEPT, handler);
         this.running = true;
         while (this.running) {
             select(selector);
