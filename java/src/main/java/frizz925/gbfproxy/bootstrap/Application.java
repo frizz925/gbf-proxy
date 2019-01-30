@@ -9,6 +9,9 @@ public class Application {
     public static final String APP_NAME = "Granblue Proxy";
     public static final String APP_VERSION = "0.1-alpha";
 
+    public static final int CONTROLLER_PORT = 8000;
+    public static final int PROXY_PORT = 8088;
+
     public static String getFullName() {
         return APP_NAME + " " + APP_VERSION;
     }

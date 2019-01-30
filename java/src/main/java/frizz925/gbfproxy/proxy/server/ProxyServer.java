@@ -34,7 +34,7 @@ public class ProxyServer implements ServerInterface {
         }
     }
 
-    public void startServer(String host, int port) throws Exception {
+    public void startServer(String host, int port) throws IOException {
         Selector selector = Selector.open();
         ServerSocketChannel server = ServerSocketChannel.open();
         ProxyHandler handler = new ProxyHandler(this.backendPort);
@@ -43,7 +43,11 @@ public class ProxyServer implements ServerInterface {
         server.register(selector, SelectionKey.OP_ACCEPT, handler);
         this.running = true;
         while (this.running) {
-            select(selector);
+            try {
+                select(selector);
+            } catch (Exception e) {
+                Logger.error(e);
+            }
         } 
     }
 
