@@ -1,0 +1,20 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+mainClassName = 'frizz925.gbfproxy.bootstrap.Application'
+
+dependencies {
+    // https://mvnrepository.com/artifact/io.undertow/undertow-core
+    compile group: 'io.undertow', name: 'undertow-core', version: '2.0.17.Final'
+    // https://mvnrepository.com/artifact/org.apache.commons/commons-collections4
+    compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.2'
+    // https://mvnrepository.com/artifact/commons-io/commons-io
+    compile group: 'commons-io', name: 'commons-io', version: '2.6'
+}
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
