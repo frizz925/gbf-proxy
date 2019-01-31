@@ -1,15 +1,71 @@
 package frizz925.gbfproxy.proxy.http;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ClientRequest {
+    public static final class Builder {
+        private ClientRequest request;
+        private ByteArrayOutputStream byteStream;
+
+        protected Builder() {
+            this.request = new ClientRequest();
+            this.byteStream = new ByteArrayOutputStream();
+        }
+
+        public Builder setVersion(String version) {
+            request.version = version;
+            return this;
+        }
+
+        public Builder setUri(String uri) {
+            return setUri(URI.create(uri));
+        }
+
+        public Builder setUri(URI uri) {
+            request.uri = uri;
+            return this;
+        }
+
+        public Builder setMethod(String method) {
+            request.method = method;
+            return this;
+        }
+
+        public Builder setMessage(String message) {
+            request.message = message;
+            return this;
+        }
+
+        public Builder setRequestHeader(String name, String value) {
+            request.getRequestHeaders().put(name, value);
+            return this;
+        }
+
+        public Builder write(byte[] bytes) throws IOException {
+            byteStream.write(bytes);
+            return this;
+        }
+
+        public Builder write(byte[] bytes, int off, int len) throws IOException {
+            byteStream.write(bytes, off, len);
+            return this;
+        }
+
+        public ClientRequest build() {
+            request.body = byteStream.toByteArray();
+            return request;
+        }
+    }
+
+    public static Builder builder() throws IOException {
+        return new Builder();
+    }
+
     public static ClientRequest parse(String message) throws IOException, URISyntaxException {
         String header = message;
         String body = "";
@@ -19,19 +75,22 @@ public class ClientRequest {
             body = message.substring(bodyIdx + 4);
         }
 
-        ClientRequest req = new ClientRequest();
-        req.message = message;
-        req.pipe.write(body.getBytes());
-
         int headerIdx = header.indexOf("\r\n");
         if (headerIdx <= 0) {
             throw new IOException("Malformed HTTP header");
         }
         String requestLine = header.substring(0, headerIdx);
         String[] tokens = requestLine.split(" ");
-        req.method = tokens[0].trim();
-        req.uri = createUri(tokens[1].trim());
-        req.version = tokens[2].split("/")[1].trim();
+        String method = tokens[0].trim();
+        URI uri = createUri(tokens[1].trim());
+        String version = tokens[2].split("/")[1].trim();
+
+        Builder builder = builder()
+            .setVersion(version)
+            .setMethod(method)
+            .setUri(uri)
+            .setMessage(message)
+            .write(body.getBytes());
 
         String[] headerLines = header.substring(headerIdx + 2)
             .trim()
@@ -43,10 +102,10 @@ public class ClientRequest {
             }
             String name = line.substring(0, idx);
             String value = line.substring(idx + 2);
-            req.requestHeaders.put(name, value);
+            builder.setRequestHeader(name, value);
         }
 
-        return req;
+        return builder.build();
     }
 
     protected static URI createUri(String raw) throws URISyntaxException {
@@ -96,17 +155,13 @@ public class ClientRequest {
     protected URI uri;
     protected String method;
     protected String version;
-    protected PipedOutputStream pipe;
     protected String message;
+    protected byte[] body;
 
     private Map<String, String> requestHeaders;
-    private InputStream inputStream;
 
-
-    protected ClientRequest() throws IOException {
+    protected ClientRequest() {
         this.requestHeaders = new HashMap<>();
-        this.pipe = new PipedOutputStream();
-        this.inputStream = new PipedInputStream(this.pipe);
     }
 
     public URI getUri() {
@@ -125,11 +180,23 @@ public class ClientRequest {
         return requestHeaders;
     }
 
-    public InputStream getInputStream() {
-        return inputStream;
+    public byte[] getBody() {
+        return body;
     }
 
     public String getMessage() {
+        if (message != null) {
+            return message;
+        }
+        message = String.format("%s %s HTTP/%s\r\n", method, uri.toString(), version);
+        for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
+            message += String.format("%s: %s\r\n", entry.getKey(), entry.getValue());
+        }
+        message += "\r\n" + new String(body);
         return message;
+    }
+
+    public String toString() {
+        return getMessage();
     }
 }
