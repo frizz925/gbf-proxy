@@ -40,7 +40,7 @@ public class Application {
     }
 
     public ServerThread startProxy(ServerThread backend) {
-        ServerThread proxy = new ProxyThread(8080, backend.port);
+        ServerThread proxy = new ProxyThread(8088, backend.port);
         Logger.log("Starting proxy server...");
         proxy.start();
         Logger.log("Proxy server listening at :" + proxy.port);
