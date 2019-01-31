@@ -3,6 +3,7 @@ package frizz925.gbfproxy.proxy.server;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -11,11 +12,18 @@ import java.nio.channels.SocketChannel;
 import frizz925.gbfproxy.bootstrap.Application;
 import frizz925.gbfproxy.proxy.channels.ReadHandler;
 import frizz925.gbfproxy.proxy.http.ClientRequest;
+import frizz925.gbfproxy.proxy.http.ServerResponse;
 import frizz925.gbfproxy.utils.Logger;
 
 public class TunnelHandler implements ReadHandler {
+    public static final String[] ALLOWED_HOSTS = new String[] {
+        ".granbluefantasy.jp",
+        ".mobage.jp"
+    };
+
     protected ByteBuffer buffer;
     protected SocketAddress address;
+    protected SocketChannel peer;
 
     public TunnelHandler(SocketAddress address) {
         this.buffer = ByteBuffer.allocate(128);
@@ -30,18 +38,22 @@ public class TunnelHandler implements ReadHandler {
             return;
         }
 
-        try {
-            String message = readToString(source);
-            ClientRequest req = ClientRequest.parse(message);
+        byte[] payload = readPayload(source);
+        ClientRequest req = ClientRequest.parseSafe(payload);
+        if (req != null) {
             tunnel(key, req);
-        } catch (Exception e) {
-            Logger.error(e);
-            reject(key, 400, "Bad Request");
+        } else {
+            if (peer != null) {
+                tunnel(key, peer, payload);
+            } else {
+                reject(key, 400, "Bad Request");
+            }
         }
     }
 
     public void tunnel(SelectionKey key, ClientRequest req) throws IOException {
-        String host = req.getUri().getHost();
+        URI uri = req.getUri();
+        String host = uri.getHost();
         if (host == null) {
             host = getHostFromHeader(req);
         }
@@ -49,31 +61,52 @@ public class TunnelHandler implements ReadHandler {
             reject(key, 400, "Bad Request");
             return;
         }
-        if (!host.endsWith(".granbluefantasy.jp")) {
+
+        boolean valid = false;
+        for (String suffix : ALLOWED_HOSTS) {
+            if (host.endsWith(suffix)) {
+                valid = true;
+                break;
+            }
+        }
+        if (!valid) {
             reject(key, 403, "Forbidden");
             return;
         }
+
         if (req.getMethod().equals("CONNECT")) {
+            peer = createPeer();
             accept(key);
+            return;
         }
+        if (!uri.getScheme().equals("https")) {
+            String url = uri.toString();
+            redirect(key, url.replace("http://", "https://"));
+            if (peer != null) {
+                peer.close();
+                peer = null;
+            }
+            return;
+        }
+        if (peer == null) {
+            peer = createPeer();
+        }
+        tunnel(key, peer, req.toString().getBytes());
+    }
 
-        PeerHandler handler;
-        Selector selector = key.selector();
-        SocketChannel source = (SocketChannel) key.channel();
-        SocketChannel peer = SocketChannel.open(this.address);
-        peer.configureBlocking(false);
-
-        String message = req.getMessage();
-        ByteBuffer bb = ByteBuffer.wrap(message.getBytes());
+    public void tunnel(SelectionKey key, SocketChannel peer, byte[] payload) throws IOException {
+        ByteBuffer bb = ByteBuffer.wrap(payload);
         while (bb.hasRemaining()) {
             peer.write(bb);
         }
+        PeerHandler handler;
+        Selector selector = key.selector();
+        SocketChannel source = (SocketChannel) key.channel();
 
         handler = new PeerHandler(source);
         handler.read(peer.register(selector, SelectionKey.OP_READ, handler));
         handler = new PeerHandler(peer);
         handler.read(source.register(selector, SelectionKey.OP_READ, handler));
-        key.cancel();
         Logger.log("[Proxy] Tunneled connection");
     }
 
@@ -87,14 +120,33 @@ public class TunnelHandler implements ReadHandler {
         respond(key, 200, "Connection Established");
     }
 
+    public void redirect(SelectionKey key, String url) throws IOException {
+        respond(key, ServerResponse.builder()
+            .setCode(302)
+            .setMessage("Found")
+            .setResponseHeader("Location", url)
+            .setResponseHeader("Connection", "Keep-Alive")
+            .setResponseHeader("Content-Length", 0));
+        Logger.log("[Proxy] Redirected connection");
+    }
+
     public void respond(SelectionKey key, int code, String message) throws IOException {
+        respond(key, ServerResponse.builder()
+            .setCode(code)
+            .setMessage(message));
+    }
+
+    public void respond(SelectionKey key, ServerResponse.Builder builder) throws IOException {
+        builder.setResponseHeader("Server", Application.getFullName());
+        respond(key, builder.build());
+    }
+
+    public void respond(SelectionKey key, ServerResponse response) throws IOException {
+        respond(key, response.toString());
+    }
+
+    public void respond(SelectionKey key, String response) throws IOException {
         SocketChannel source = (SocketChannel) key.channel();
-        String serverName = Application.getFullName();
-        String response = String.join("\r\n", new String[] {
-            "HTTP/1.1 " + code + " " + message,
-            "Server: " + serverName,
-            "\r\n"
-        });
         ByteBuffer buffer = ByteBuffer.wrap(response.getBytes());
         while (buffer.hasRemaining()) {
             source.write(buffer);
@@ -107,7 +159,7 @@ public class TunnelHandler implements ReadHandler {
         key.cancel();
     }
 
-    private String readToString(SocketChannel source) throws IOException {
+    private byte[] readPayload(SocketChannel source) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         while (source.isOpen() && source.isConnected()) {
             buffer.clear();
@@ -118,7 +170,7 @@ public class TunnelHandler implements ReadHandler {
             buffer.flip();
             baos.write(buffer.array(), buffer.position(), buffer.remaining());
         }
-        return baos.toString();
+        return baos.toByteArray();
     }
 
     private String getHostFromHeader(ClientRequest req) {
@@ -131,5 +183,11 @@ public class TunnelHandler implements ReadHandler {
             return host.substring(0, portIdx);
         }
         return host;
+    }
+
+    private SocketChannel createPeer() throws IOException {
+        SocketChannel peer = SocketChannel.open(this.address);
+        peer.configureBlocking(false);
+        return peer;
     }
 }

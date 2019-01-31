@@ -36,11 +36,6 @@ public class ClientRequest {
             return this;
         }
 
-        public Builder setMessage(String message) {
-            request.message = message;
-            return this;
-        }
-
         public Builder setRequestHeader(String name, String value) {
             request.getRequestHeaders().put(name, value);
             return this;
@@ -66,7 +61,22 @@ public class ClientRequest {
         return new Builder();
     }
 
-    public static ClientRequest parse(String message) throws IOException, URISyntaxException {
+    public static ClientRequest parseSafe(byte[] payload) {
+        try {
+            return parse(payload);
+        } catch (IOException e) {
+            return null;
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
+
+    public static ClientRequest parse(byte[] payload) throws IOException, URISyntaxException {
+        String message = new String(payload);
+        if (!message.contains("\r\n\r\n")) {
+            throw new IOException("Malformed HTTP header");
+        }
+
         String header = message;
         String body = "";
         int bodyIdx = message.indexOf("\r\n\r\n");
@@ -76,9 +86,6 @@ public class ClientRequest {
         }
 
         int headerIdx = header.indexOf("\r\n");
-        if (headerIdx <= 0) {
-            throw new IOException("Malformed HTTP header");
-        }
         String requestLine = header.substring(0, headerIdx);
         String[] tokens = requestLine.split(" ");
         String method = tokens[0].trim();
@@ -89,7 +96,6 @@ public class ClientRequest {
             .setVersion(version)
             .setMethod(method)
             .setUri(uri)
-            .setMessage(message)
             .write(body.getBytes());
 
         String[] headerLines = header.substring(headerIdx + 2)
@@ -155,7 +161,6 @@ public class ClientRequest {
     protected URI uri;
     protected String method;
     protected String version;
-    protected String message;
     protected byte[] body;
 
     private Map<String, String> requestHeaders;
@@ -184,19 +189,11 @@ public class ClientRequest {
         return body;
     }
 
-    public String getMessage() {
-        if (message != null) {
-            return message;
-        }
-        message = String.format("%s %s HTTP/%s\r\n", method, uri.toString(), version);
-        for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
-            message += String.format("%s: %s\r\n", entry.getKey(), entry.getValue());
-        }
-        message += "\r\n" + new String(body);
-        return message;
-    }
-
     public String toString() {
-        return getMessage();
+        String result = String.format("%s %s HTTP/%s\r\n", method, uri.toString(), version);
+        for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
+            result += String.format("%s: %s\r\n", entry.getKey(), entry.getValue());
+        }
+        return result + "\r\n" + new String(body);
     }
 }

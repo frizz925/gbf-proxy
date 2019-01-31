@@ -44,3 +44,4 @@ authorityKeyIdentifier = keyid:always, issuer
 
 [ client_san ]
 DNS.1 = *.granbluefantasy.jp
+DNS.2 = *.mobage.jp

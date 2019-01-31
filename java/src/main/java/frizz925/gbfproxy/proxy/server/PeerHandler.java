@@ -19,7 +19,18 @@ public class PeerHandler implements ReadHandler {
     @Override
     public void read(SelectionKey key) throws IOException {
         SocketChannel source = (SocketChannel) key.channel();
-        while (source.isOpen() && peer.isOpen()) {
+        if (!source.isOpen() || !peer.isOpen()) {
+            if (source.isOpen()) {
+                source.close();
+            }
+            if (peer.isOpen()) {
+                peer.close();
+            }
+            key.cancel();
+            return;
+        }
+
+        while (true) {
             buffer.clear();
             int read = source.read(buffer);
             if (read <= 0) {
