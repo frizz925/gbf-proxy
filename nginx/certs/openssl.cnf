@@ -1,0 +1,46 @@
+[ req ]
+default_md = sha512
+default_bits = 2048
+default_keyfile = gbf-proxy-ca.key
+distinguished_name = CA_dn
+x509_extensions = CA_ext
+prompt = no
+encrypt_key = no
+
+[ ca ]
+default_ca = CA
+
+[ CA ]
+default_md = sha512
+default_days = 3650
+certificate = gbf-proxy-ca.crt
+private_key = gbf-proxy-ca.key
+serial = gbf-proxy-ca.srl
+database = index.txt
+new_certs_dir = newcerts
+x509_extensions = client_ext
+policy = CA_policy
+
+[ CA_dn ]
+commonName = Granblue Proxy Root CA
+
+[ CA_policy ]
+commonName = supplied
+
+[ CA_ext ]
+basicConstraints = critical, CA:TRUE
+keyUsage = digitalSignature, keyCertSign, cRLSign
+extendedKeyUsage = serverAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always, issuer
+
+[ client_ext ]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature
+extendedKeyUsage = serverAuth
+subjectAltName = @client_san
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always, issuer
+
+[ client_san ]
+DNS.1 = *.granbluefantasy.jp
