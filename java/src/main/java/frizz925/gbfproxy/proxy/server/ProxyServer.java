@@ -22,7 +22,7 @@ public class ProxyServer implements ServerInterface {
 
     @Override
     public void start(int port) {
-        start("localhost", port);
+        start("0.0.0.0", port);
     }
 
     @Override

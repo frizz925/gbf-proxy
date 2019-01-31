@@ -7,7 +7,7 @@ import io.undertow.server.handlers.BlockingHandler;
 
 public class ControllerServer implements ServerInterface {
     public void start(int port) {
-        start("localhost", port);
+        start("0.0.0.0", port);
     }
 
     public void start(String host, int port) {
