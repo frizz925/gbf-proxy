@@ -3,7 +3,7 @@ set -e
 CWD=$(pwd)
 
 # Testing using golang
-cd $(dirname $0)/golang
+cd "$(dirname $0)/golang"
 echo "Running test with coverage..."
 make coverage
 echo "OK"
@@ -30,4 +30,4 @@ pkill -9 -P $SERVER_PID > /dev/null 2>&1
 
 # Done
 echo "Done."
-cd $CWD
+cd "$CWD"
