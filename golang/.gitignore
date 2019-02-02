@@ -27,3 +27,6 @@
 
 # VS Code stuff
 .vscode
+
+# Coverage stuff
+coverage.*
