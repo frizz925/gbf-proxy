@@ -27,5 +27,5 @@ run:
 	$(GORUN) ./main.go
 deps:
 	$(GODEP) ensure
-docker: deps test build-linux
+docker-image: deps test build-linux
 	docker build . -t frizz925/gbf-proxy
