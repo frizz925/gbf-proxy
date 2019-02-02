@@ -3,21 +3,27 @@ GODEP=dep
 GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
+GORUN=$(GOCMD) run
 
-BINARY_NAME=gbf-proxy.out
+BUILD_DIR=bin
+BINARY_NAME=gbf-proxy
 
-all: test build
-build:
-	$(GOBUILD) -o $(BINARY_NAME) -v
+all: deps test build
+build: build-darwin build-linux build-windows
+build-darwin:
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 -v
+build-linux:
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 -v
+build-windows:
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64 -v
 test:
 	$(GOTEST) ./...
 clean:
 	$(GOCLEAN)
-	rm -f $(BINARY_NAME)
+	rm -f builds/$(BINARY_NAME)-*
 run:
-	$(GOBUILD) -o $(BINARY_NAME) -v
-	./$(BINARY_NAME)
+	$(GORUN) ./main.go
 deps:
 	$(GODEP) ensure
-docker:
-	docker build .
+docker: deps test build-linux
+	docker build . -t frizz925/gbf-proxy
