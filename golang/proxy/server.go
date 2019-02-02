@@ -97,7 +97,7 @@ func (s *Server) serve() {
 	defer s.close()
 	err := http.Serve(s.Listener, s)
 	if err != nil {
-		panic(err)
+		// do nothing
 	}
 }
 
