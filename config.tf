@@ -22,7 +22,7 @@ resource "docker_container" "nginx-server" {
     }
 
     volumes {
-        host_path = "${path.cwd}/conf.d"
+        host_path = "${path.cwd}/nginx/conf.d"
         container_path = "/etc/nginx/conf.d"
         read_only = true
     }
