@@ -8,7 +8,7 @@ import (
 
 func main() {
 	s := proxy.NewServer()
-	l, err := s.Start("localhost:8088")
+	l, err := s.Open("localhost:8000")
 	if err != nil {
 		panic(err)
 	}
