@@ -28,4 +28,4 @@ run:
 deps:
 	$(GODEP) ensure
 docker-image: deps test build-linux
-	docker build . -t frizz925/gbf-proxy
+	docker build -t gbf-proxy .
