@@ -25,8 +25,5 @@
 # Virtual Go stuff
 .virtualgo
 
-# VS Code stuff
-.vscode
-
 # Coverage stuff
 coverage.*
