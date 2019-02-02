@@ -18,6 +18,10 @@ type TestState struct {
 var state *TestState
 
 func TestMain(m *testing.M) {
+	os.Exit(testMainWrapper(m))
+}
+
+func testMainWrapper(m *testing.M) int {
 	s := NewServer()
 	l, err := s.Open("localhost:0")
 	if err != nil {
@@ -30,7 +34,7 @@ func TestMain(m *testing.M) {
 		Listener: l,
 		URL:      url,
 	}
-	os.Exit(m.Run())
+	return m.Run()
 }
 
 func TestForbidden(t *testing.T) {
