@@ -17,7 +17,9 @@ build-linux:
 build-windows:
 	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64 -v
 test:
-	$(GOTEST) ./...
+	$(GOTEST) -race ./...
+coverage:
+	$(GOTEST) -race -coverprofile=coverage.txt -covermode=atomic ./...
 clean:
 	$(GOCLEAN)
 	rm -f builds/$(BINARY_NAME)-*
