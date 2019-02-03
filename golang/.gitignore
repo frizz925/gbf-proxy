@@ -27,3 +27,6 @@
 
 # Coverage stuff
 coverage.*
+
+# Debug stuff
+debug
