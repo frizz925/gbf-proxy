@@ -1,3 +1,6 @@
+<br>
+<p align="center"><img src="https://raw.githubusercontent.com/Frizz925/gbf-proxy/master/res/architecture-new.png"></p>
+<br>
 
 ![Travis](https://img.shields.io/travis/Frizz925/gbf-proxy.svg?style=flat-square)
 ![Codecov](https://img.shields.io/codecov/c/gh/Frizz925/gbf-proxy.svg?style=flat-square)
@@ -5,7 +8,5 @@
 
 # Granblue Proxy
 Granblue caching proxy for in-game assets written in Golang and aimed to be blazingly fast!
-
-![Architecture](https://raw.githubusercontent.com/Frizz925/gbf-proxy/master/res/architecture-new.png)
 
 *Readme still WIP*
