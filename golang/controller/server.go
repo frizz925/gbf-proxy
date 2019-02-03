@@ -1,44 +1,40 @@
 package controller
 
 import (
-	"errors"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/Frizz925/gbf-proxy/golang/lib"
 )
 
 type Server struct {
-	WaitGroup *sync.WaitGroup
-	Listener  net.Listener
+	base *lib.BaseServer
 }
 
-func NewServer() *Server {
-	s := &Server{}
-	s.WaitGroup = &sync.WaitGroup{}
-	return s
+func NewServer() lib.Server {
+	return &Server{
+		base: lib.NewBaseServer("Controller"),
+	}
 }
 
 func (s *Server) Open(addr string) (net.Listener, error) {
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	s.Listener = l
-	s.WaitGroup.Add(1)
-	go s.serve()
-	return l, nil
+	return s.base.Open(addr, s.serve)
 }
 
-func (s *Server) Close() error {
-	if s.Listener == nil {
-		return errors.New("Server isn't running")
-	}
-	s.Listener.Close()
-	s.WaitGroup.Wait()
-	return nil
+func (s *Server) Close() (bool, error) {
+	return s.base.Close()
+}
+
+func (s *Server) WaitGroup() *sync.WaitGroup {
+	return s.base.WaitGroup
+}
+
+func (s *Server) Listener() net.Listener {
+	return s.base.Listener
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -59,12 +55,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		writeError(w, 400, "Bad request URI")
 		return
 	}
+	if url.Scheme == "" {
+		url.Scheme = "http"
+	}
 	url.Host = host
 
 	c := http.Client{}
 	res, err := c.Do(&http.Request{
 		Method: req.Method,
-		URL:    req.URL,
+		URL:    url,
 		Body:   req.Body,
 		Header: req.Header,
 	})
@@ -84,8 +83,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	w.WriteHeader(res.StatusCode)
-	for written := 0; written < len(body); {
-		write, err := w.Write(body)
+	length := len(body)
+	for written := 0; written < length; {
+		write, err := w.Write(body[written:])
 		if err != nil {
 			panic(err)
 		}
@@ -93,22 +93,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) serve() {
-	defer s.close()
-	err := http.Serve(s.Listener, s)
+func (s *Server) serve(l net.Listener) {
+	err := http.Serve(l, s)
 	if err != nil {
 		// do nothing
 	}
 }
 
-func (s *Server) close() {
-	s.Listener.Close()
-	s.WaitGroup.Done()
-}
-
 func writeError(w http.ResponseWriter, code int, message string) {
 	w.WriteHeader(code)
-	_, err := w.Write([]byte(message))
+	_, err := w.Write([]byte(message + "\r\n"))
 	if err != nil {
 		panic(err)
 	}
