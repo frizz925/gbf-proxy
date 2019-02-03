@@ -32,9 +32,15 @@ override.tf.json
 
 # End of https://www.gitignore.io/api/terraform
 
+# .tfplan files
+*.tfplan
+
 # Mac stuff
 .DS_Store
 
 # VS Code stuff
 .vscode
 *.code-workspace
+
+# Unix socket stuff
+*.sock
