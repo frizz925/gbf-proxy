@@ -6,4 +6,6 @@
 # Granblue Proxy
 Granblue caching proxy for in-game assets written in Golang and aimed to be blazingly fast!
 
+![Architecture](https://raw.githubusercontent.com/Frizz925/gbf-proxy/master/res/architecture-new.png)
+
 *Readme still WIP*
