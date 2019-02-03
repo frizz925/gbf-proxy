@@ -20,8 +20,8 @@ PROXY_PID=$!
 
 cleanup() {
     echo "Killing servers..."
-    pkill -9 -P $CONTROLLER_PID > /dev/null 2>&1 || exit 0
-    pkill -9 -P $PROXY_PID > /dev/null 2>&1 || exit 0
+    pkill -9 -P $CONTROLLER_PID > /dev/null 2>&1 || true
+    pkill -9 -P $PROXY_PID > /dev/null 2>&1 || true
     echo "Done."
 }
 trap cleanup EXIT
