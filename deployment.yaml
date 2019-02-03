@@ -17,3 +17,4 @@ spec:
         image: gbf-proxy:latest
         ports:
         - containerPort: 80
+        imagePullPolicy: Never
