@@ -7,8 +7,8 @@ before_install:
   - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
   - chmod +x $GOPATH/bin/dep
 install:
-  - bash install.sh
+  - bash scripts/install.sh
 script:
-  - bash test.sh
+  - bash scripts/test.sh
 after_success:
   - bash <(curl -s https://codecov.io/bash)
