@@ -1,5 +1,5 @@
 <br>
-<p align="center"><img src="https://raw.githubusercontent.com/Frizz925/gbf-proxy/master/res/architecture-new.png"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/Frizz925/gbf-proxy/master/res/architecture-rev2.png"></p>
 <br>
 
 ![Travis](https://img.shields.io/travis/Frizz925/gbf-proxy.svg?style=flat-square)
