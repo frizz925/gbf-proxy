@@ -1,56 +1,62 @@
-provider "aws" {
-  region = "ap-southeast-1"
-  shared_credentials_file = "${pathexpand("~/.aws/credentials")}"
-  profile = "gbf-proxy"
-}
-
-data "aws_ami" "coreos" {
-  most_recent = true
-
-  filter {
-    name = "name"
-    values = ["CoreOS-stable-1967.4.0-hvm-*"]
-  }
-
-  filter {
-    name = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  filter {
-    name = "product-code.type"
-    values = ["marketplace"]
-  }
-
-  filter {
-    name = "product-code"
-    values = ["ryg425ue2hwnsok9ccfastg4"]
-  }
-
-  owners = ["679593333241"] # Canonical
-}
-
-resource "aws_instance" "proxy" {
-  ami = "${data.aws_ami.coreos.id}"
-  instance_type = "t2.micro"
-
-  tags = {
-      Name = "Granblue Proxy"
-  }
+variable "docker_sock" {
+  type = "string"
+  description = "The endpoint for the Docker socket"
+  default = "unix:///var/run/docker.sock"
 }
 
 provider "docker" {
-  host = "unix:///var/run/docker.sock"
+  host = "${var.docker_sock}"
 }
 
-resource "docker_image" "nginx" {
-  name = "nginx:1.15"
-  keep_locally = true
+resource "docker_network" "gbf-proxy_network" {
+  name = "gbf-proxy_network"
 }
 
-resource "docker_container" "nginx-server" {
-  name = "nginx-server"
-  image = "${docker_image.nginx.latest}"
+resource "docker_container" "controller" {
+  name = "gbf-proxy_controller"
+  image = "gbf-proxy:latest"
+  hostname = "controller"
+  command = ["controller", "8000"]
+
+  networks_advanced {
+    name = "${docker_network.gbf-proxy_network.id}"
+    aliases = ["controller"]
+  }
+
+  ports {
+    internal = 8000
+    external = 8000
+  }
+}
+
+resource "docker_container" "proxy" {
+  name = "gbf-proxy_proxy"
+  image = "gbf-proxy:latest"
+  hostname = "proxy"
+  command = ["proxy", "8088", "controller:8000"]
+
+  networks_advanced {
+    name = "${docker_network.gbf-proxy_network.id}"
+    aliases = ["proxy"]
+  }
+
+  ports {
+    internal = 8088
+    external = 8088
+  }
+
+  depends_on = ["docker_container.controller"]
+}
+
+resource "docker_container" "nginx" {
+  name = "gbf-proxy_nginx"
+  image = "gbf-proxy-nginx:latest"
+  hostname = "nginx"
+
+  networks_advanced {
+    name = "${docker_network.gbf-proxy_network.id}"
+    aliases = ["nginx"]
+  }
 
   ports {
     internal = 80
@@ -62,9 +68,5 @@ resource "docker_container" "nginx-server" {
     external = 4443
   }
 
-  volumes {
-    host_path = "${path.cwd}/nginx/conf.d"
-    container_path = "/etc/nginx/conf.d"
-    read_only = true
-  }
+  depends_on = ["docker_container.proxy"]
 }
