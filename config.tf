@@ -1,7 +1,19 @@
 variable "docker_sock" {
   type = "string"
   description = "The endpoint for the Docker socket"
-  default = "unix:///var/run/docker.sock"
+  default = "tcp://localhost:2375"
+}
+
+variable "nginx_http" {
+  type = "string"
+  description = "Port used by Nginx reverse proxy for HTTP"
+  default = "80"
+}
+
+variable "nginx_https" {
+  type = "string"
+  description = "Port used by Nginx reverse proxy for HTTPS"
+  default = "443"
 }
 
 provider "docker" {
@@ -60,12 +72,12 @@ resource "docker_container" "nginx" {
 
   ports {
     internal = 80
-    external = 8080
+    external = "${var.nginx_http}"
   }
 
   ports {
     internal = 443
-    external = 4443
+    external = "${var.nginx_https}"
   }
 
   depends_on = ["docker_container.proxy"]
