@@ -3,9 +3,9 @@ set -e
 CWD=$(pwd)
 
 # Testing using golang
-cd "$(dirname $0)/golang"
+cd "$(dirname $0)/../golang"
 echo "Running test with coverage..."
-make coverage
+go test -race -coverprofile=coverage.txt -covermode=atomic ./..
 echo "OK"
 
 # Testing using external tool
