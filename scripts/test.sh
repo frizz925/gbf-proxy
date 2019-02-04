@@ -5,7 +5,7 @@ CWD=$(pwd)
 # Testing using golang
 cd "$(dirname $0)/../golang"
 echo "Running test with coverage..."
-go test -race -coverprofile=coverage.txt -covermode=atomic ./..
+go test -race -coverprofile=coverage.txt -covermode=atomic ./...
 echo "OK"
 
 # Testing using external tool
