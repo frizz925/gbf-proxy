@@ -15,7 +15,7 @@ The proxy is available on *gbf-proxy.kogane.moe* at ports 80, 443, and 8088. The
 Although this is basically a public web proxy, it can only proxy your web traffic into **.granbluefantasy.jp** domains so make sure you set up your proxy rules properly, otherwise you'll get 403 Forbidden responses!
 
 ### Google Chrome
-I highly recommend a Chrome Extension [Proxy SwitchyOmega](https://chrome.google.com/webstore/detail/proxy-switchyomega/padekgcemlokbadohgkifijomclgjgif?hl=en) to easily setup the proxy. It's free and it just works.
+I highly recommend the Chrome Extension [Proxy SwitchyOmega](https://chrome.google.com/webstore/detail/proxy-switchyomega/padekgcemlokbadohgkifijomclgjgif?hl=en) to easily setup the proxy. It's free and it just works.
 
 There are two ways to set this up:
 - Using switch profile
