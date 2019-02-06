@@ -103,6 +103,9 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 
+	requestLine := lines[0]
+	log.Printf("%s %s", conn.RemoteAddr(), requestLine)
+
 	headers := make(map[string]string)
 	for _, line := range lines[1:] {
 		idx := strings.Index(line, ": ")
@@ -125,7 +128,6 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 
-	requestLine := lines[0]
 	method := strings.Split(requestLine, " ")[0]
 
 	peer, err := net.Dial("tcp", s.config.BackendAddr)
@@ -193,6 +195,7 @@ func respondAndClose(c net.Conn, code int, reason string) {
 }
 
 func respond(c net.Conn, code int, reason string) error {
+	log.Printf("%s %d %s", c.RemoteAddr(), code, reason)
 	responseText := strings.Join([]string{
 		fmt.Sprintf("HTTP/1.1 %d %s", code, reason),
 		"Server: Granblue Proxy 0.1-alpha",
