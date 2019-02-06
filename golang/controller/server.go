@@ -58,6 +58,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
+	log.Printf("%s %s %s", req.RemoteAddr, req.Method, req.RequestURI)
 	u, err := url.Parse(req.RequestURI)
 	if err != nil {
 		writeError(w, 400, "Bad request URI")
@@ -90,7 +91,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 		Header: req.Header,
 	})
 	if err != nil {
-		writeError(w, 502, "Bad gateway")
+		writeServerError(w, 502, "Bad gateway", err)
 		return
 	}
 	defer res.Body.Close()
@@ -121,6 +122,11 @@ func (s *Server) serve(l net.Listener) {
 	if err != nil {
 		// do nothing
 	}
+}
+
+func writeServerError(w http.ResponseWriter, code int, message string, err error) {
+	log.Println(err)
+	writeError(w, code, message)
 }
 
 func writeError(w http.ResponseWriter, code int, message string) {
