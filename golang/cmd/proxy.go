@@ -33,7 +33,7 @@ var proxyCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("Proxy at %s -> controller at %s\n", args[0], args[1])
+		log.Printf("Proxy at %s -> Controller at %s", args[0], args[1])
 		s.WaitGroup().Wait()
 	},
 }
