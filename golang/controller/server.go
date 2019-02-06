@@ -13,6 +13,7 @@ import (
 
 type ServerConfig struct {
 	WebAddr string
+	WebHost string
 }
 
 type Server struct {
@@ -45,31 +46,34 @@ func (s *Server) Listener() net.Listener {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
+	u, err := url.Parse(req.RequestURI)
+	if err != nil {
+		writeError(w, 400, "Bad request URI")
+		return
+	}
+
 	host := req.Host
 	hostname := host
 	tokens := strings.SplitN(host, ":", 2)
 	if len(tokens) >= 2 {
 		hostname = tokens[0]
 	}
-	if !strings.HasSuffix(hostname, ".granbluefantasy.jp") {
+	if host == s.config.WebHost {
+		u.Host = s.config.WebAddr
+	} else if strings.HasSuffix(hostname, ".granbluefantasy.jp") {
+		u.Host = host
+	} else {
 		writeError(w, 403, "Host not allowed")
 		return
 	}
 
-	url, err := url.Parse(req.RequestURI)
-	if err != nil {
-		writeError(w, 400, "Bad request URI")
-		return
+	if u.Scheme == "" {
+		u.Scheme = "http"
 	}
-	if url.Scheme == "" {
-		url.Scheme = "http"
-	}
-	url.Host = host
-
 	c := http.Client{}
 	res, err := c.Do(&http.Request{
 		Method: req.Method,
-		URL:    url,
+		URL:    u,
 		Body:   req.Body,
 		Header: req.Header,
 	})
