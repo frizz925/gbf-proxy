@@ -2,6 +2,7 @@ package controller
 
 import (
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -45,7 +46,18 @@ func (s *Server) Listener() net.Listener {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			err := r.(error)
+			log.Println(err)
+			writeError(w, 503, err.Error())
+		}
+		req.Body.Close()
+	}()
+	s.ServeHTTPUnsafe(w, req)
+}
+
+func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	u, err := url.Parse(req.RequestURI)
 	if err != nil {
 		writeError(w, 400, "Bad request URI")
@@ -78,7 +90,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Header: req.Header,
 	})
 	if err != nil {
-		panic(err)
+		writeError(w, 502, "Bad gateway")
+		return
 	}
 	defer res.Body.Close()
 
