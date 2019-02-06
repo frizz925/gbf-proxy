@@ -24,9 +24,12 @@ func TestMain(m *testing.M) {
 }
 
 func testMainWrapper(m *testing.M) int {
-	c := prepare(controller.NewServer())
-	backendAddr := c.Listener().Addr().String()
-	p := prepare(NewServer(backendAddr))
+	c := controller.NewServer(&controller.ServerConfig{})
+	prepare(c)
+	p := NewServer(&ServerConfig{
+		BackendAddr: c.Listener().Addr().String(),
+	})
+	prepare(p)
 
 	defer func() {
 		p.Close()

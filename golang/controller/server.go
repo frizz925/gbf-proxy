@@ -11,13 +11,19 @@ import (
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 )
 
-type Server struct {
-	base *lib.BaseServer
+type ServerConfig struct {
+	WebAddr string
 }
 
-func NewServer() lib.Server {
+type Server struct {
+	base   *lib.BaseServer
+	config *ServerConfig
+}
+
+func NewServer(config *ServerConfig) lib.Server {
 	return &Server{
-		base: lib.NewBaseServer("Controller"),
+		base:   lib.NewBaseServer("Controller"),
+		config: config,
 	}
 }
 

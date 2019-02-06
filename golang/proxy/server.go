@@ -12,19 +12,23 @@ import (
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 )
 
-type Server struct {
-	base        *lib.BaseServer
+type ServerConfig struct {
 	BackendAddr string
+}
+
+type Server struct {
+	base   *lib.BaseServer
+	config *ServerConfig
 }
 
 type tunnelState struct {
 	established bool
 }
 
-func NewServer(backendAddr string) lib.Server {
+func NewServer(config *ServerConfig) lib.Server {
 	return &Server{
-		base:        lib.NewBaseServer("Proxy"),
-		BackendAddr: backendAddr,
+		base:   lib.NewBaseServer("Proxy"),
+		config: config,
 	}
 }
 
@@ -124,20 +128,20 @@ func (s *Server) handle(conn net.Conn) {
 	requestLine := lines[0]
 	method := strings.Split(requestLine, " ")[0]
 
-	peer, err := net.Dial("tcp", s.BackendAddr)
+	peer, err := net.Dial("tcp", s.config.BackendAddr)
 	if err != nil {
 		respondAndClose(conn, 502, "Bad Gateway")
 		return
 	}
 
 	if method == "CONNECT" {
-		ok, err := respond(conn, 200, "Connection Established")
-		if !ok && err != nil {
+		err := respond(conn, 200, "Connection Established")
+		if err != nil {
 			panic(err)
 		}
 	} else {
-		ok, err := writeString(peer, payload)
-		if !ok && err != nil {
+		err := writeString(peer, payload)
+		if err != nil {
 			panic(err)
 		}
 	}
@@ -168,8 +172,8 @@ func tunnel(state *tunnelState, src net.Conn, dest net.Conn) {
 			}
 			break
 		}
-		ok, err := write(dest, buffer[:n])
-		if !ok && err != nil {
+		err = write(dest, buffer[:n])
+		if err != nil {
 			_, ok := err.(*net.OpError)
 			if err != io.EOF && !ok {
 				panic(err)
@@ -182,13 +186,13 @@ func tunnel(state *tunnelState, src net.Conn, dest net.Conn) {
 
 func respondAndClose(c net.Conn, code int, reason string) {
 	defer c.Close()
-	ok, err := respond(c, code, reason)
-	if !ok && err != nil {
+	err := respond(c, code, reason)
+	if err != nil {
 		panic(err)
 	}
 }
 
-func respond(c net.Conn, code int, reason string) (bool, error) {
+func respond(c net.Conn, code int, reason string) error {
 	responseText := strings.Join([]string{
 		fmt.Sprintf("HTTP/1.1 %d %s", code, reason),
 		"Server: Granblue Proxy 0.1-alpha",
@@ -197,17 +201,17 @@ func respond(c net.Conn, code int, reason string) (bool, error) {
 	return writeString(c, responseText)
 }
 
-func writeString(c net.Conn, responseText string) (bool, error) {
+func writeString(c net.Conn, responseText string) error {
 	response := []byte(responseText)
 	return write(c, response)
 }
 
-func write(c net.Conn, response []byte) (bool, error) {
+func write(c net.Conn, response []byte) error {
 	writer := bufio.NewWriter(c)
 	_, err := writer.Write(response)
 	if err != nil {
-		return false, err
+		return err
 	}
 	writer.Flush()
-	return true, nil
+	return nil
 }
