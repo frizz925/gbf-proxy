@@ -17,15 +17,17 @@ import (
 )
 
 const DefaultExpirationTime = time.Hour
+const DefaultHeartbeatTime = time.Minute
 
 type ServerConfig struct {
 	Redis *redis.Client
 }
 
 type Server struct {
-	base   *lib.BaseServer
-	config *ServerConfig
-	redis  *redis.Client
+	base           *lib.BaseServer
+	config         *ServerConfig
+	redis          *redis.Client
+	redisAvailable bool
 }
 
 type Cache struct {
@@ -42,9 +44,10 @@ type CacheReader struct {
 
 func New(config *ServerConfig) lib.Server {
 	return &Server{
-		base:   lib.NewBaseServer("Cache"),
-		config: config,
-		redis:  config.Redis,
+		base:           lib.NewBaseServer("Cache"),
+		config:         config,
+		redis:          config.Redis,
+		redisAvailable: false,
 	}
 }
 
@@ -110,7 +113,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	if err != nil && err != io.EOF {
 		panic(err)
 	}
-	if ShouldCache(req, res) {
+	if s.ShouldCache(req, res) {
 		s.CacheAsync(req, res, body, logError)
 	}
 }
@@ -131,6 +134,9 @@ func (s *Server) Fetch(req *http.Request) (*http.Response, error) {
 }
 
 func (s *Server) HasCache(req *http.Request) bool {
+	if !s.redisAvailable {
+		return false
+	}
 	key := GetKeyForRequest(req)
 	val, err := s.redis.Exists(key).Result()
 	if err != nil {
@@ -176,6 +182,11 @@ func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 	})
 }
 
+func (s *Server) ShouldCache(req *http.Request, res *http.Response) bool {
+	// TODO: Add logic on which request or response we should cache
+	return s.redisAvailable
+}
+
 func (s *Server) CacheAsync(req *http.Request, res *http.Response, body []byte, callback func(error)) {
 	go func() {
 		callback(s.Cache(req, res, body))
@@ -199,9 +210,26 @@ func (s *Server) Cache(req *http.Request, res *http.Response, body []byte) error
 }
 
 func (s *Server) serve(l net.Listener) {
+	go s.checkRedisHeartbeat()
 	err := http.Serve(l, s)
 	if err != nil {
 		// do nothing
+	}
+}
+
+func (s *Server) checkRedisHeartbeat() {
+	for s.Running() {
+		val, err := s.redis.Ping().Result()
+		if err != nil {
+			log.Printf("Redis Heartbeat: Got error '%s'", err.Error())
+			s.redisAvailable = false
+		} else if val != "PONG" {
+			log.Printf("Redis Heartbeat: Expected 'PONG' response, got '%s'", val)
+			s.redisAvailable = false
+		} else {
+			s.redisAvailable = true
+		}
+		time.Sleep(DefaultHeartbeatTime)
 	}
 }
 
@@ -211,11 +239,6 @@ func (c *CacheReader) Read(p []byte) (int, error) {
 
 func (c *CacheReader) Close() error {
 	return nil
-}
-
-func ShouldCache(req *http.Request, res *http.Response) bool {
-	// TODO: Add logic on which request or response we should cache
-	return true
 }
 
 func GetKeyForRequest(req *http.Request) string {
