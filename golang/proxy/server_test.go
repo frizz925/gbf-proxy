@@ -6,15 +6,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Frizz925/gbf-proxy/golang/controller"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	"github.com/PuerkitoBio/goquery"
 )
 
 type testState struct {
-	controller lib.Server
-	proxy      lib.Server
-	client     *http.Client
+	proxy  *Server
+	client *http.Client
 }
 
 var state *testState
@@ -24,16 +22,13 @@ func TestMain(m *testing.M) {
 }
 
 func testMainWrapper(m *testing.M) int {
-	c := controller.NewServer(&controller.ServerConfig{})
-	prepare(c)
-	p := NewServer(&ServerConfig{
-		BackendAddr: c.Listener().Addr().String(),
+	p := New(&ServerConfig{
+		BackendAddr: "game.granbluefantasy.jp:80",
 	})
 	prepare(p)
 
 	defer func() {
 		p.Close()
-		c.Close()
 	}()
 
 	proxyAddr := p.Listener().Addr().String()
@@ -47,9 +42,8 @@ func testMainWrapper(m *testing.M) int {
 		},
 	}
 	state = &testState{
-		controller: c,
-		proxy:      p,
-		client:     client,
+		proxy:  p.(*Server),
+		client: client,
 	}
 	return m.Run()
 }
@@ -62,19 +56,7 @@ func prepare(s lib.Server) lib.Server {
 	return s
 }
 
-func TestForbidden(t *testing.T) {
-	res, err := state.client.Get("http://github.com")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-	code := res.StatusCode
-	if code != 403 {
-		t.Fatalf("Request is not forbidden! Status code: %d", code)
-	}
-}
-
-func TestAllowed(t *testing.T) {
+func TestProxy(t *testing.T) {
 	res, err := state.client.Get("http://game.granbluefantasy.jp")
 	if err != nil {
 		t.Fatal(err)
