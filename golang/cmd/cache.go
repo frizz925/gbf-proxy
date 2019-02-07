@@ -2,48 +2,43 @@ package cmd
 
 import (
 	"errors"
-	"log"
 
 	"github.com/Frizz925/gbf-proxy/golang/cache"
-	"github.com/go-redis/redis"
 
 	"github.com/spf13/cobra"
 )
 
 var cacheCmd = &cobra.Command{
-	Use:   "cache <listen-address> <redis-address>",
+	Use:   "cache <listen-address>",
 	Short: "Start the Granblue Proxy cache service",
 	Long: `Arguments:
   listen-address  The address this service should listen at
-  redis-address   The address for the Redis server
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		nargs := len(args)
 		if nargs < 1 {
 			return errors.New("Missing listen-address argument")
-		} else if nargs < 2 {
-			return errors.New("Missing redis-address argument")
 		}
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		redis := redis.NewClient(&redis.Options{
-			Addr:     args[1],
-			Password: "",
-			DB:       0,
-		})
-		s := cache.New(&cache.ServerConfig{
-			Redis: redis,
-		})
-		_, err := s.Open(args[0])
+		listenAddr := args[0]
+		config := &cache.ServerConfig{}
+		redisAddr, err := cmd.PersistentFlags().GetString("redis-address")
+		if err == nil && redisAddr != "" {
+			config.RedisAddr = redisAddr
+		}
+
+		s := cache.New(config)
+		_, err = s.Open(listenAddr)
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("Cache at %s -> Redis server at %s", args[0], args[1])
 		s.WaitGroup().Wait()
 	},
 }
 
 func init() {
+	cacheCmd.PersistentFlags().StringP("redis-address", "r", "localhost:6379", "The address for the Redis server")
 	rootCmd.AddCommand(cacheCmd)
 }
