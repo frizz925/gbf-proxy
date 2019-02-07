@@ -20,7 +20,7 @@ type BaseServer struct {
 	WaitGroup *sync.WaitGroup
 	Listener  net.Listener
 	running   bool
-	stateSync *sync.WaitGroup
+	lock      *sync.Mutex
 }
 
 func NewBaseServer(name string) *BaseServer {
@@ -28,7 +28,7 @@ func NewBaseServer(name string) *BaseServer {
 		Name:      name,
 		WaitGroup: &sync.WaitGroup{},
 		running:   false,
-		stateSync: &sync.WaitGroup{},
+		lock:      &sync.Mutex{},
 	}
 	return s
 }
@@ -61,9 +61,8 @@ func (s *BaseServer) Close() error {
 }
 
 func (s *BaseServer) Running() bool {
-	s.stateSync.Wait()
-	s.stateSync.Add(1)
-	defer s.stateSync.Done()
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	return s.running && s.Listener != nil
 }
 

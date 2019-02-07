@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 const (
 	DefaultExpirationTime = time.Hour
 	DefaultHeartbeatTime  = time.Minute
+	CacheAPIHeaderName    = "X-Granblue-Cache-API"
 )
 
 type ServerConfig struct {
@@ -31,7 +33,7 @@ type Server struct {
 	config         *ServerConfig
 	redis          *redis.Client
 	redisAvailable bool
-	stateSync      *sync.WaitGroup
+	lock           *sync.Mutex
 }
 
 type Cache struct {
@@ -66,11 +68,14 @@ func New(config *ServerConfig) lib.Server {
 		config:         config,
 		redis:          redisClient,
 		redisAvailable: redisClient != nil,
-		stateSync:      &sync.WaitGroup{},
+		lock:           &sync.Mutex{},
 	}
 }
 
 func (s *Server) Open(addr string) (net.Listener, error) {
+	if s.RedisAvailable() {
+		log.Printf("Cache at %s -> Redis server at %s", addr, s.config.RedisAddr)
+	}
 	return s.base.Open(addr, s.serve)
 }
 
@@ -102,14 +107,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	u := req.URL
-	host := u.Host
-	if host == "" {
-		host = req.Header.Get("Host")
-	}
-	addr := s.Listener().Addr().String()
-	if host == addr {
+
+	apiSwitch := req.Header.Get(CacheAPIHeaderName)
+	if apiSwitch == "1" {
 		s.ServeAsAPI(w, req)
+		return
+	}
+
+	u := httpHelpers.ParseURL(req)
+	if u.Host == "" {
+		httpHelpers.LogRequest(s.base.Name, req, "Missing host")
+		httpHelpers.WriteError(w, 400, "Missing host")
 		return
 	}
 
@@ -138,6 +146,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) ServeAsAPI(w http.ResponseWriter, req *http.Request) {
+	httpHelpers.LogRequest(s.base.Name, req, "API access")
 	w.WriteHeader(200)
 	_, err := w.Write([]byte("OK"))
 	if err != nil && err != io.EOF {
@@ -147,8 +156,10 @@ func (s *Server) ServeAsAPI(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) Fetch(req *http.Request) (*http.Response, error) {
 	if s.HasCache(req) {
+		httpHelpers.LogRequest(s.base.Name, req, "Cache access")
 		return s.FetchFromCache(req)
 	}
+	httpHelpers.LogRequest(s.base.Name, req, "Proxy access")
 	return s.FetchFromServer(req)
 }
 
@@ -229,11 +240,9 @@ func (s *Server) Cache(req *http.Request, res *http.Response, body []byte) error
 }
 
 func (s *Server) RedisAvailable() bool {
-	s.stateSync.Wait()
-	s.stateSync.Add(1)
-	defer s.stateSync.Done()
-	return s.redisAvailable
-
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.redis != nil && s.redisAvailable
 }
 
 func (s *Server) serve(l net.Listener) {
@@ -245,15 +254,14 @@ func (s *Server) serve(l net.Listener) {
 }
 
 func (s *Server) startRedisHeartbeat() {
-	if !s.RedisAvailable() {
-		return
-	}
 	for s.Running() {
-		redisAvailable := s.checkRedisHeartbeat()
-		s.stateSync.Wait()
-		s.stateSync.Add(1)
+		redisAvailable := false
+		if s.redis != nil {
+			redisAvailable = s.checkRedisHeartbeat()
+		}
+		s.lock.Lock()
 		s.redisAvailable = redisAvailable
-		s.stateSync.Done()
+		s.lock.Unlock()
 		time.Sleep(DefaultHeartbeatTime)
 	}
 }
@@ -263,7 +271,9 @@ func (s *Server) checkRedisHeartbeat() bool {
 	if err != nil {
 		log.Printf("Redis Heartbeat: Got error '%s'", err.Error())
 		return false
-	} else if val != "PONG" {
+	}
+	val = strings.TrimSpace(val)
+	if val != "PONG" {
 		log.Printf("Redis Heartbeat: Expected 'PONG' response, got '%s'", val)
 		return false
 	}

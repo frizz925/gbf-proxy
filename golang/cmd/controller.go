@@ -32,7 +32,7 @@ var controllerCmd = &cobra.Command{
 		if err == nil && webAddr != "" {
 			config.WebAddr = webAddr
 		}
-		webHost, err := cmd.PersistentFlags().GetString("web-host")
+		webHost, err := cmd.PersistentFlags().GetString("web-hostname")
 		if err == nil && webHost != "" {
 			config.WebHost = webHost
 		}

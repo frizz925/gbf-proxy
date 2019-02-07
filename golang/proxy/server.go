@@ -21,8 +21,9 @@ type Server struct {
 	config *ServerConfig
 }
 
-type tunnelState struct {
+type tunnel struct {
 	established bool
+	lock        *sync.Mutex
 }
 
 func New(config *ServerConfig) lib.Server {
@@ -108,7 +109,7 @@ func (s *Server) handle(conn net.Conn) {
 	}
 
 	requestLine := lines[0]
-	log.Printf("%s %s", conn.RemoteAddr(), requestLine)
+	log.Printf("[Proxy] %s %s", conn.RemoteAddr(), requestLine)
 
 	headers := make(map[string]string)
 	for _, line := range lines[1:] {
@@ -141,14 +142,15 @@ func (s *Server) handle(conn net.Conn) {
 		}
 	}
 
-	state := &tunnelState{
+	t := &tunnel{
 		established: true,
+		lock:        &sync.Mutex{},
 	}
-	go tunnel(state, peer, conn)
-	go tunnel(state, conn, peer)
+	go t.Pipe(peer, conn)
+	go t.Pipe(conn, peer)
 }
 
-func tunnel(state *tunnelState, src net.Conn, dest net.Conn) {
+func (t *tunnel) Pipe(src net.Conn, dest net.Conn) {
 	defer func() {
 		src.Close()
 		dest.Close()
@@ -158,7 +160,7 @@ func tunnel(state *tunnelState, src net.Conn, dest net.Conn) {
 	}()
 	reader := bufio.NewReader(src)
 	buffer := make([]byte, 65535)
-	for state.established {
+	for t.Established() {
 		n, err := reader.Read(buffer)
 		if err != nil {
 			_, ok := err.(*net.OpError)
@@ -176,7 +178,15 @@ func tunnel(state *tunnelState, src net.Conn, dest net.Conn) {
 			break
 		}
 	}
-	state.established = false
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	t.established = false
+}
+
+func (t *tunnel) Established() bool {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	return t.established
 }
 
 func respondAndClose(c net.Conn, code int, reason string) {

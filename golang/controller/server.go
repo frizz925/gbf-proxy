@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Frizz925/gbf-proxy/golang/cache"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
 )
@@ -31,7 +32,7 @@ type Server struct {
 	client         *http.Client
 	cache          *http.Client
 	cacheAvailable bool
-	webAvailable   bool
+	lock           *sync.Mutex
 }
 
 func New(config *ServerConfig) lib.Server {
@@ -55,15 +56,15 @@ func New(config *ServerConfig) lib.Server {
 		client:         http.DefaultClient,
 		cache:          cacheClient,
 		cacheAvailable: cacheClient != nil,
-		webAvailable:   webAddr != "",
+		lock:           &sync.Mutex{},
 	}
 }
 
 func (s *Server) Open(addr string) (net.Listener, error) {
-	if s.cacheAvailable {
+	if s.CacheAvailable() {
 		log.Printf("Controller at %s -> Cache service at %s", addr, s.config.CacheAddr)
 	}
-	if s.webAvailable {
+	if s.WebAvailable() {
 		if s.config.WebHost == "" {
 			log.Printf("Web hostname not set. Using the default %s", addr)
 			s.config.WebHost = addr
@@ -102,36 +103,30 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	log.Printf("%s %s %s", req.RemoteAddr, req.Method, req.RequestURI)
-	u, err := url.Parse(req.RequestURI)
-	if err != nil {
-		httpHelpers.WriteError(w, 400, "Bad request URI")
-		return
-	}
 
-	c := s.client
-	host := req.Host
-	hostname := host
-	tokens := strings.SplitN(host, ":", 2)
+	u := httpHelpers.ParseURL(req)
+	hostname := u.Host
+	tokens := strings.SplitN(hostname, ":", 2)
 	if len(tokens) >= 2 {
 		hostname = tokens[0]
 	}
-	if s.webAvailable && host == s.config.WebHost {
+
+	c := s.client
+	if s.WebAvailable() && u.Host == s.config.WebHost {
+		httpHelpers.LogRequest(s.base.Name, req, "Static web access")
 		u.Host = s.config.WebAddr
 	} else if strings.HasSuffix(hostname, ".granbluefantasy.jp") {
-		u.Host = host
 		// Hostname starting with 'game-a' usually meant for loading asset files
-		if s.cacheAvailable && strings.HasPrefix(hostname, "game-a") {
+		if s.CacheAvailable() && strings.HasPrefix(hostname, "game-a") {
 			c = s.cache
+			httpHelpers.LogRequest(s.base.Name, req, "Cache access")
 		}
 	} else {
+		httpHelpers.LogRequest(s.base.Name, req, "Forbidden host")
 		httpHelpers.WriteError(w, 403, "Host not allowed")
 		return
 	}
 
-	if u.Scheme == "" {
-		u.Scheme = "http"
-	}
 	res, err := c.Do(&http.Request{
 		Method: req.Method,
 		URL:    u,
@@ -165,6 +160,18 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (s *Server) CacheAvailable() bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.cache != nil && s.cacheAvailable
+}
+
+func (s *Server) WebAvailable() bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.config.WebAddr != ""
+}
+
 func (s *Server) serve(l net.Listener) {
 	go s.startCacheHeartbeat()
 	err := http.Serve(l, s)
@@ -174,24 +181,30 @@ func (s *Server) serve(l net.Listener) {
 }
 
 func (s *Server) startCacheHeartbeat() {
-	if !s.cacheAvailable {
-		return
-	}
+	header := make(http.Header)
+	header.Set(cache.CacheAPIHeaderName, "1")
 	req := &http.Request{
 		Method: "GET",
 		URL: &url.URL{
 			Scheme: "http",
 			Host:   s.config.CacheAddr,
 		},
+		Header: header,
 	}
 	for s.Running() {
-		s.cacheAvailable = s.checkCacheHeartbeat(req)
+		cacheAvailable := false
+		if s.cache != nil {
+			cacheAvailable = s.checkCacheHeartbeat(req)
+		}
+		s.lock.Lock()
+		s.cacheAvailable = cacheAvailable
+		s.lock.Unlock()
 		time.Sleep(DefaultHeartbeatTime)
 	}
 }
 
 func (s *Server) checkCacheHeartbeat(req *http.Request) bool {
-	res, err := s.client.Do(req)
+	res, err := s.cache.Do(req)
 	if err != nil {
 		log.Printf("Cache Heartbeat: Got error '%s'", err)
 		return false
@@ -201,7 +214,7 @@ func (s *Server) checkCacheHeartbeat(req *http.Request) bool {
 		log.Printf("Cache Heartbeat: Got error while reading response '%s'", err)
 		return false
 	}
-	text := string(b)
+	text := strings.TrimSpace(string(b))
 	if text != "OK" {
 		log.Printf("Cache Heartbeat: Expecting response 'OK', got '%s'", text)
 		return false

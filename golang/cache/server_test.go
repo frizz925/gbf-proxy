@@ -72,12 +72,15 @@ func testMainWrapper(m *testing.M) int {
 
 func TestHeartbeat(t *testing.T) {
 	host := state.listener.Addr().String()
+	header := make(http.Header)
+	header.Set(CacheAPIHeaderName, "1")
 	res, err := sendRequest(&http.Request{
 		URL: &url.URL{
 			Scheme: "http",
 			Host:   host,
 			Path:   "/ping",
 		},
+		Header: header,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -107,6 +110,13 @@ func TestCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer firstResponse.Body.Close()
+	firstBody, err := ioutil.ReadAll(firstResponse.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(firstBody) <= 0 {
+		t.Fatal("Response body is empty!")
+	}
 
 	// HACK: Sleep for a second before sending another request
 	time.Sleep(time.Second)
@@ -121,14 +131,12 @@ func TestCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer secondResponse.Body.Close()
-
-	firstBody, err := ioutil.ReadAll(firstResponse.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
 	secondBody, err := ioutil.ReadAll(secondResponse.Body)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(secondBody) <= 0 {
+		t.Fatal("Response body is empty!")
 	}
 	if !reflect.DeepEqual(firstBody, secondBody) {
 		t.Fatal("Computed and cached responses don't match!")
