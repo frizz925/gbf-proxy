@@ -26,7 +26,7 @@ var proxyCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		s := proxy.NewServer(&proxy.ServerConfig{
+		s := proxy.New(&proxy.ServerConfig{
 			BackendAddr: args[1],
 		})
 		_, err := s.Open(args[0])

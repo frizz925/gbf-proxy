@@ -13,7 +13,7 @@ type testWebServer struct {
 }
 
 func TestForbidden(t *testing.T) {
-	s := NewServer(&ServerConfig{
+	s := New(&ServerConfig{
 		WebAddr: "0.0.0.0:80",
 		WebHost: "not-localhost",
 	})
@@ -27,7 +27,7 @@ func TestForbidden(t *testing.T) {
 	}
 	code := res.StatusCode
 	if code != 403 {
-		t.Fatalf("Request not forbidden! Status code: %d", code)
+		t.Fatalf("Request is not forbidden! Status code: %d", code)
 	}
 }
 
@@ -41,7 +41,7 @@ func TestWebServer(t *testing.T) {
 	config := &ServerConfig{
 		WebAddr: addr,
 	}
-	s := NewServer(config)
+	s := New(config)
 	l, err := s.Open("localhost:0")
 	if err != nil {
 		t.Fatal(err)

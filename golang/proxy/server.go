@@ -25,7 +25,7 @@ type tunnelState struct {
 	established bool
 }
 
-func NewServer(config *ServerConfig) lib.Server {
+func New(config *ServerConfig) lib.Server {
 	return &Server{
 		base:   lib.NewBaseServer("Proxy"),
 		config: config,
@@ -36,7 +36,7 @@ func (s *Server) Open(addr string) (net.Listener, error) {
 	return s.base.Open(addr, s.serve)
 }
 
-func (s *Server) Close() (bool, error) {
+func (s *Server) Close() error {
 	return s.base.Close()
 }
 
@@ -118,24 +118,13 @@ func (s *Server) handle(conn net.Conn) {
 		headers[name] = value
 	}
 
-	host := headers["Host"]
-	idx := strings.Index(host, ":")
-	if idx > 0 {
-		host = host[:idx]
-	}
-	if !strings.HasSuffix(host, ".granbluefantasy.jp") {
-		respondAndClose(conn, 403, "Forbidden")
-		return
-	}
-
-	method := strings.Split(requestLine, " ")[0]
-
 	peer, err := net.Dial("tcp", s.config.BackendAddr)
 	if err != nil {
 		respondAndClose(conn, 502, "Bad Gateway")
 		return
 	}
 
+	method := strings.Split(requestLine, " ")[0]
 	if method == "CONNECT" {
 		err := respond(conn, 200, "Connection Established")
 		if err != nil {

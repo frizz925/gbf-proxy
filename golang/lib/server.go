@@ -8,7 +8,7 @@ import (
 
 type Server interface {
 	Open(addr string) (net.Listener, error)
-	Close() (bool, error)
+	Close() error
 	WaitGroup() *sync.WaitGroup
 	Listener() net.Listener
 }
@@ -38,14 +38,14 @@ func (s *BaseServer) Open(addr string, callback func(net.Listener)) (net.Listene
 	return l, nil
 }
 
-func (s *BaseServer) Close() (bool, error) {
+func (s *BaseServer) Close() error {
 	if s.Listener == nil {
-		return false, fmt.Errorf("%s listener isn't running", s.Name)
+		return fmt.Errorf("%s listener isn't running", s.Name)
 	}
 	s.Listener.Close()
 	s.WaitGroup.Wait()
 	s.Listener = nil
-	return true, nil
+	return nil
 }
 
 func (s *BaseServer) serve(l net.Listener, callback func(net.Listener)) {

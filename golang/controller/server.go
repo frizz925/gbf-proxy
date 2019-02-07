@@ -22,7 +22,7 @@ type Server struct {
 	config *ServerConfig
 }
 
-func NewServer(config *ServerConfig) lib.Server {
+func New(config *ServerConfig) lib.Server {
 	return &Server{
 		base:   lib.NewBaseServer("Controller"),
 		config: config,
@@ -33,7 +33,7 @@ func (s *Server) Open(addr string) (net.Listener, error) {
 	return s.base.Open(addr, s.serve)
 }
 
-func (s *Server) Close() (bool, error) {
+func (s *Server) Close() error {
 	return s.base.Close()
 }
 

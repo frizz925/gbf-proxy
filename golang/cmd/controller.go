@@ -29,7 +29,7 @@ var controllerCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		s := controller.NewServer(&controller.ServerConfig{
+		s := controller.New(&controller.ServerConfig{
 			WebAddr: args[1],
 			WebHost: args[2],
 		})
