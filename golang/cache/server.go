@@ -64,6 +64,10 @@ func (s *Server) WaitGroup() *sync.WaitGroup {
 	return s.base.WaitGroup
 }
 
+func (s *Server) Running() bool {
+	return s.base.Running()
+}
+
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {

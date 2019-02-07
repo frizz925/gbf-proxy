@@ -48,6 +48,10 @@ func (s *Server) WaitGroup() *sync.WaitGroup {
 	return s.base.WaitGroup
 }
 
+func (s *Server) Running() bool {
+	return s.base.Running()
+}
+
 func (s *Server) serve(l net.Listener) {
 	for {
 		c, err := l.Accept()

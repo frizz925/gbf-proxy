@@ -11,27 +11,34 @@ type Server interface {
 	Close() error
 	WaitGroup() *sync.WaitGroup
 	Listener() net.Listener
+	Running() bool
 }
 
 type BaseServer struct {
 	Name      string
 	WaitGroup *sync.WaitGroup
 	Listener  net.Listener
+	running   bool
 }
 
 func NewBaseServer(name string) *BaseServer {
 	s := &BaseServer{
 		Name:      name,
 		WaitGroup: &sync.WaitGroup{},
+		running:   false,
 	}
 	return s
 }
 
 func (s *BaseServer) Open(addr string, callback func(net.Listener)) (net.Listener, error) {
+	if s.Running() {
+		return nil, fmt.Errorf("%s service already running", s.Name)
+	}
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
+	s.running = true
 	s.Listener = l
 	s.WaitGroup.Add(1)
 	go s.serve(l, callback)
@@ -39,13 +46,18 @@ func (s *BaseServer) Open(addr string, callback func(net.Listener)) (net.Listene
 }
 
 func (s *BaseServer) Close() error {
-	if s.Listener == nil {
+	if !s.Running() {
 		return fmt.Errorf("%s listener isn't running", s.Name)
 	}
 	s.Listener.Close()
 	s.WaitGroup.Wait()
+	s.running = false
 	s.Listener = nil
 	return nil
+}
+
+func (s *BaseServer) Running() bool {
+	return s.running && s.Listener != nil
 }
 
 func (s *BaseServer) serve(l net.Listener, callback func(net.Listener)) {
