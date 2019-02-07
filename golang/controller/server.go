@@ -190,6 +190,7 @@ func (s *Server) startCacheHeartbeat() {
 		URL: &url.URL{
 			Scheme: "http",
 			Host:   s.config.CacheAddr,
+			Path:   "/ping",
 		},
 		Header: header,
 	}
