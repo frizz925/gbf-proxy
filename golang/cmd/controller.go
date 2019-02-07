@@ -10,11 +10,12 @@ import (
 )
 
 var controllerCmd = &cobra.Command{
-	Use:   "controller <listen-address> <web-address> <web-hostname>",
+	Use:   "controller <listen-address> <cache-address> <web-address> <web-hostname>",
 	Short: "Start the Granblue Proxy controller service",
 	Long: `Arguments:
   listen-address  The address this service should listen at
-  web-address     The address for web server serving static files
+  cache-address   The address for the cache service
+  web-address     The address for the web server serving static files
   web-hostname    The hostname for the web server
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -22,8 +23,10 @@ var controllerCmd = &cobra.Command{
 		if nargs < 1 {
 			return errors.New("Missing listen-address argument")
 		} else if nargs < 2 {
-			return errors.New("Missing web-address argument")
+			return errors.New("Missing cache-address argument")
 		} else if nargs < 3 {
+			return errors.New("Missing web-address argument")
+		} else if nargs < 4 {
 			return errors.New("Missing web-hostname argument")
 		}
 		return nil

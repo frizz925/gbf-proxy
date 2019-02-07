@@ -10,22 +10,37 @@ import (
 	"sync"
 
 	"github.com/Frizz925/gbf-proxy/golang/lib"
+	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
 )
 
 type ServerConfig struct {
-	WebAddr string
-	WebHost string
+	CacheAddr string
+	WebAddr   string
+	WebHost   string
 }
 
 type Server struct {
 	base   *lib.BaseServer
 	config *ServerConfig
+	client *http.Client
+	cache  *http.Client
 }
 
 func New(config *ServerConfig) lib.Server {
+	cacheURL, err := url.Parse("http://" + config.CacheAddr)
+	if err != nil {
+		panic(err)
+	}
+	cacheClient := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(cacheURL),
+		},
+	}
 	return &Server{
 		base:   lib.NewBaseServer("Controller"),
 		config: config,
+		client: http.DefaultClient,
+		cache:  cacheClient,
 	}
 }
 
@@ -49,8 +64,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			err := r.(error)
-			log.Println(err)
-			writeError(w, 503, err.Error())
+			httpHelpers.WriteServerError(w, 503, "Internal server error", err)
 		}
 		req.Body.Close()
 	}()
@@ -58,13 +72,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
 	log.Printf("%s %s %s", req.RemoteAddr, req.Method, req.RequestURI)
 	u, err := url.Parse(req.RequestURI)
 	if err != nil {
-		writeError(w, 400, "Bad request URI")
+		httpHelpers.WriteError(w, 400, "Bad request URI")
 		return
 	}
 
+	c := s.client
 	host := req.Host
 	hostname := host
 	tokens := strings.SplitN(host, ":", 2)
@@ -75,15 +91,18 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 		u.Host = s.config.WebAddr
 	} else if strings.HasSuffix(hostname, ".granbluefantasy.jp") {
 		u.Host = host
+		// Hostname starting with 'game-a' usually meant for loading asset files
+		if strings.HasPrefix(hostname, "game-a") {
+			c = s.cache
+		}
 	} else {
-		writeError(w, 403, "Host not allowed")
+		httpHelpers.WriteError(w, 403, "Host not allowed")
 		return
 	}
 
 	if u.Scheme == "" {
 		u.Scheme = "http"
 	}
-	c := http.Client{}
 	res, err := c.Do(&http.Request{
 		Method: req.Method,
 		URL:    u,
@@ -91,7 +110,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 		Header: req.Header,
 	})
 	if err != nil {
-		writeServerError(w, 502, "Bad gateway", err)
+		httpHelpers.WriteServerError(w, 502, "Bad gateway", err)
 		return
 	}
 	defer res.Body.Close()
@@ -121,18 +140,5 @@ func (s *Server) serve(l net.Listener) {
 	err := http.Serve(l, s)
 	if err != nil {
 		// do nothing
-	}
-}
-
-func writeServerError(w http.ResponseWriter, code int, message string, err error) {
-	log.Println(err)
-	writeError(w, code, message)
-}
-
-func writeError(w http.ResponseWriter, code int, message string) {
-	w.WriteHeader(code)
-	_, err := w.Write([]byte(message + "\r\n"))
-	if err != nil {
-		panic(err)
 	}
 }
