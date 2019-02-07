@@ -2,6 +2,7 @@ package lib
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"sync"
 )
@@ -42,6 +43,7 @@ func (s *BaseServer) Open(addr string, callback func(net.Listener)) (net.Listene
 	s.Listener = l
 	s.WaitGroup.Add(1)
 	go s.serve(l, callback)
+	log.Printf("%s service listening at %s", s.Name, l.Addr().String())
 	return l, nil
 }
 
