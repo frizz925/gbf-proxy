@@ -19,9 +19,10 @@ const (
 )
 
 type ServerConfig struct {
-	CacheAddr string
-	WebAddr   string
-	WebHost   string
+	CacheAddr   string
+	CacheClient *http.Client
+	WebAddr     string
+	WebHost     string
 }
 
 type Server struct {
@@ -30,28 +31,45 @@ type Server struct {
 	client         *http.Client
 	cache          *http.Client
 	cacheAvailable bool
+	webAvailable   bool
 }
 
 func New(config *ServerConfig) lib.Server {
-	cacheURL, err := url.Parse("http://" + config.CacheAddr)
-	if err != nil {
-		panic(err)
+	cacheClient := config.CacheClient
+	if cacheClient == nil {
+		cacheAddr := config.CacheAddr
+		if cacheAddr == "" {
+			log.Println("Cache address not set. Caching capability disabled.")
+		} else {
+			cacheClient = NewProxyClient(config.CacheAddr)
+		}
 	}
-	cacheClient := &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(cacheURL),
-		},
+	webAddr := config.WebAddr
+	if webAddr == "" {
+		log.Println("Web address not set. Static web capability disabled.")
 	}
+
 	return &Server{
 		base:           lib.NewBaseServer("Controller"),
 		config:         config,
 		client:         http.DefaultClient,
 		cache:          cacheClient,
-		cacheAvailable: false,
+		cacheAvailable: cacheClient != nil,
+		webAvailable:   webAddr != "",
 	}
 }
 
 func (s *Server) Open(addr string) (net.Listener, error) {
+	if s.cacheAvailable {
+		log.Printf("Controller at %s -> Cache service at %s", addr, s.config.CacheAddr)
+	}
+	if s.webAvailable {
+		if s.config.WebHost == "" {
+			log.Printf("Web hostname not set. Using the default %s", addr)
+			s.config.WebHost = addr
+		}
+		log.Printf("Controller at %s -> Web server at %s", addr, s.config.WebAddr)
+	}
 	return s.base.Open(addr, s.serve)
 }
 
@@ -98,7 +116,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	if len(tokens) >= 2 {
 		hostname = tokens[0]
 	}
-	if host == s.config.WebHost {
+	if s.webAvailable && host == s.config.WebHost {
 		u.Host = s.config.WebAddr
 	} else if strings.HasSuffix(hostname, ".granbluefantasy.jp") {
 		u.Host = host
@@ -156,6 +174,9 @@ func (s *Server) serve(l net.Listener) {
 }
 
 func (s *Server) startCacheHeartbeat() {
+	if !s.cacheAvailable {
+		return
+	}
 	req := &http.Request{
 		Method: "GET",
 		URL: &url.URL{
@@ -187,4 +208,16 @@ func (s *Server) checkCacheHeartbeat(req *http.Request) bool {
 	}
 	log.Printf("Cache Heartbeat: %s", text)
 	return true
+}
+
+func NewProxyClient(host string) *http.Client {
+	cacheURL := &url.URL{
+		Scheme: "http",
+		Host:   host,
+	}
+	return &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(cacheURL),
+		},
+	}
 }
