@@ -22,7 +22,8 @@ const (
 )
 
 type ServerConfig struct {
-	Redis *redis.Client
+	RedisAddr string
+	Redis     *redis.Client
 }
 
 type Server struct {
@@ -45,11 +46,25 @@ type CacheReader struct {
 }
 
 func New(config *ServerConfig) lib.Server {
+	redisClient := config.Redis
+	if redisClient == nil {
+		redisAddr := config.RedisAddr
+		if redisAddr == "" {
+			log.Printf("Redis address not set. In-memory caching capability disabled.")
+		} else {
+			redisClient = redis.NewClient(&redis.Options{
+				Addr:     redisAddr,
+				Password: "",
+				DB:       0,
+			})
+		}
+	}
+
 	return &Server{
 		base:           lib.NewBaseServer("Cache"),
 		config:         config,
-		redis:          config.Redis,
-		redisAvailable: false,
+		redis:          redisClient,
+		redisAvailable: redisClient != nil,
 	}
 }
 
@@ -220,6 +235,9 @@ func (s *Server) serve(l net.Listener) {
 }
 
 func (s *Server) startRedisHeartbeat() {
+	if !s.redisAvailable {
+		return
+	}
 	for s.Running() {
 		s.redisAvailable = s.checkRedisHeartbeat()
 		time.Sleep(DefaultHeartbeatTime)
