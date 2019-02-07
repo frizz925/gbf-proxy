@@ -120,6 +120,8 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 		if s.CacheAvailable() && strings.HasPrefix(hostname, "game-a") {
 			c = s.cache
 			httpHelpers.LogRequest(s.base.Name, req, "Cache access")
+		} else {
+			httpHelpers.LogRequest(s.base.Name, req, "Proxy access")
 		}
 	} else {
 		httpHelpers.LogRequest(s.base.Name, req, "Forbidden host")
