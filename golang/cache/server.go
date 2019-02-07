@@ -31,6 +31,7 @@ type Server struct {
 	config         *ServerConfig
 	redis          *redis.Client
 	redisAvailable bool
+	stateSync      *sync.WaitGroup
 }
 
 type Cache struct {
@@ -65,6 +66,7 @@ func New(config *ServerConfig) lib.Server {
 		config:         config,
 		redis:          redisClient,
 		redisAvailable: redisClient != nil,
+		stateSync:      &sync.WaitGroup{},
 	}
 }
 
@@ -151,7 +153,7 @@ func (s *Server) Fetch(req *http.Request) (*http.Response, error) {
 }
 
 func (s *Server) HasCache(req *http.Request) bool {
-	if !s.redisAvailable {
+	if !s.RedisAvailable() {
 		return false
 	}
 	key := GetKeyForRequest(req)
@@ -201,7 +203,7 @@ func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 
 func (s *Server) ShouldCache(req *http.Request, res *http.Response) bool {
 	// TODO: Add logic on which request or response we should cache
-	return s.redisAvailable
+	return s.RedisAvailable()
 }
 
 func (s *Server) CacheAsync(req *http.Request, res *http.Response, body []byte, callback func(error)) {
@@ -226,6 +228,14 @@ func (s *Server) Cache(req *http.Request, res *http.Response, body []byte) error
 	return status.Err()
 }
 
+func (s *Server) RedisAvailable() bool {
+	s.stateSync.Wait()
+	s.stateSync.Add(1)
+	defer s.stateSync.Done()
+	return s.redisAvailable
+
+}
+
 func (s *Server) serve(l net.Listener) {
 	go s.startRedisHeartbeat()
 	err := http.Serve(l, s)
@@ -235,11 +245,15 @@ func (s *Server) serve(l net.Listener) {
 }
 
 func (s *Server) startRedisHeartbeat() {
-	if !s.redisAvailable {
+	if !s.RedisAvailable() {
 		return
 	}
 	for s.Running() {
-		s.redisAvailable = s.checkRedisHeartbeat()
+		redisAvailable := s.checkRedisHeartbeat()
+		s.stateSync.Wait()
+		s.stateSync.Add(1)
+		s.redisAvailable = redisAvailable
+		s.stateSync.Done()
 		time.Sleep(DefaultHeartbeatTime)
 	}
 }
