@@ -8,9 +8,14 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
+)
+
+const (
+	DefaultHeartbeatTime = time.Minute
 )
 
 type ServerConfig struct {
@@ -20,10 +25,11 @@ type ServerConfig struct {
 }
 
 type Server struct {
-	base   *lib.BaseServer
-	config *ServerConfig
-	client *http.Client
-	cache  *http.Client
+	base           *lib.BaseServer
+	config         *ServerConfig
+	client         *http.Client
+	cache          *http.Client
+	cacheAvailable bool
 }
 
 func New(config *ServerConfig) lib.Server {
@@ -37,10 +43,11 @@ func New(config *ServerConfig) lib.Server {
 		},
 	}
 	return &Server{
-		base:   lib.NewBaseServer("Controller"),
-		config: config,
-		client: http.DefaultClient,
-		cache:  cacheClient,
+		base:           lib.NewBaseServer("Controller"),
+		config:         config,
+		client:         http.DefaultClient,
+		cache:          cacheClient,
+		cacheAvailable: false,
 	}
 }
 
@@ -96,7 +103,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	} else if strings.HasSuffix(hostname, ".granbluefantasy.jp") {
 		u.Host = host
 		// Hostname starting with 'game-a' usually meant for loading asset files
-		if strings.HasPrefix(hostname, "game-a") {
+		if s.cacheAvailable && strings.HasPrefix(hostname, "game-a") {
 			c = s.cache
 		}
 	} else {
@@ -141,8 +148,43 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) serve(l net.Listener) {
+	go s.startCacheHeartbeat()
 	err := http.Serve(l, s)
 	if err != nil {
 		// do nothing
 	}
+}
+
+func (s *Server) startCacheHeartbeat() {
+	req := &http.Request{
+		Method: "GET",
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   s.config.CacheAddr,
+		},
+	}
+	for s.Running() {
+		s.cacheAvailable = s.checkCacheHeartbeat(req)
+		time.Sleep(DefaultHeartbeatTime)
+	}
+}
+
+func (s *Server) checkCacheHeartbeat(req *http.Request) bool {
+	res, err := s.client.Do(req)
+	if err != nil {
+		log.Printf("Cache Heartbeat: Got error '%s'", err)
+		return false
+	}
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("Cache Heartbeat: Got error while reading response '%s'", err)
+		return false
+	}
+	text := string(b)
+	if text != "OK" {
+		log.Printf("Cache Heartbeat: Expecting response 'OK', got '%s'", text)
+		return false
+	}
+	log.Printf("Cache Heartbeat: %s", text)
+	return true
 }
