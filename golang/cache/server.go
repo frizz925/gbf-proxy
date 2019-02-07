@@ -76,6 +76,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
+	u := req.URL
+	host := u.Host
+	if host == "" {
+		host = req.Header.Get("Host")
+	}
+	addr := s.Listener().Addr().String()
+	if host == addr {
+		s.ServeAsAPI(w, req)
+		return
+	}
+
 	res, err := s.Fetch(req)
 	if err != nil {
 		panic(err)
@@ -92,13 +103,19 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	}
 	w.WriteHeader(res.StatusCode)
 	_, err = w.Write(body)
-	if err != nil {
-		if err != io.EOF {
-			panic(err)
-		}
+	if err != nil && err != io.EOF {
+		panic(err)
 	}
 	if ShouldCache(req, res) {
 		s.CacheAsync(req, res, body, logError)
+	}
+}
+
+func (s *Server) ServeAsAPI(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(200)
+	_, err := w.Write([]byte("OK"))
+	if err != nil && err != io.EOF {
+		panic(err)
 	}
 }
 
