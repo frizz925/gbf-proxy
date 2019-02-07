@@ -1,4 +1,6 @@
 language: go
+services:
+  - redis-server
 go:
   - "1.10"
 env:
