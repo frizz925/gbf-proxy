@@ -66,7 +66,7 @@ func (s *Server) Open(addr string) (net.Listener, error) {
 	}
 	if s.WebAvailable() {
 		if s.config.WebHost == "" {
-			log.Printf("Web hostname not set. Using the default %s", addr)
+			log.Printf("Web hostname not set. Using the default %s.", addr)
 			s.config.WebHost = addr
 		}
 		log.Printf("Controller at %s -> Web server at %s", addr, s.config.WebAddr)
