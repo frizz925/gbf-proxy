@@ -16,8 +16,10 @@ import (
 	"github.com/vmihailenco/msgpack"
 )
 
-const DefaultExpirationTime = time.Hour
-const DefaultHeartbeatTime = time.Minute
+const (
+	DefaultExpirationTime = time.Hour
+	DefaultHeartbeatTime  = time.Minute
+)
 
 type ServerConfig struct {
 	Redis *redis.Client
@@ -210,27 +212,31 @@ func (s *Server) Cache(req *http.Request, res *http.Response, body []byte) error
 }
 
 func (s *Server) serve(l net.Listener) {
-	go s.checkRedisHeartbeat()
+	go s.startRedisHeartbeat()
 	err := http.Serve(l, s)
 	if err != nil {
 		// do nothing
 	}
 }
 
-func (s *Server) checkRedisHeartbeat() {
+func (s *Server) startRedisHeartbeat() {
 	for s.Running() {
-		val, err := s.redis.Ping().Result()
-		if err != nil {
-			log.Printf("Redis Heartbeat: Got error '%s'", err.Error())
-			s.redisAvailable = false
-		} else if val != "PONG" {
-			log.Printf("Redis Heartbeat: Expected 'PONG' response, got '%s'", val)
-			s.redisAvailable = false
-		} else {
-			s.redisAvailable = true
-		}
+		s.redisAvailable = s.checkRedisHeartbeat()
 		time.Sleep(DefaultHeartbeatTime)
 	}
+}
+
+func (s *Server) checkRedisHeartbeat() bool {
+	val, err := s.redis.Ping().Result()
+	if err != nil {
+		log.Printf("Redis Heartbeat: Got error '%s'", err.Error())
+		return false
+	} else if val != "PONG" {
+		log.Printf("Redis Heartbeat: Expected 'PONG' response, got '%s'", val)
+		return false
+	}
+	log.Printf("Redis Heartbeat: %s", val)
+	return true
 }
 
 func (c *CacheReader) Read(p []byte) (int, error) {
