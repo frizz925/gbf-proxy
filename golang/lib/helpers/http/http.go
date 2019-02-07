@@ -14,6 +14,6 @@ func WriteError(w http.ResponseWriter, code int, message string) {
 	w.WriteHeader(code)
 	_, err := w.Write([]byte(message + "\r\n"))
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 }
