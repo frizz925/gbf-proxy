@@ -22,7 +22,7 @@ coverage:
 	$(GOTEST) -race -coverprofile=coverage.txt -covermode=atomic ./...
 clean:
 	$(GOCLEAN)
-	rm -f builds/$(BINARY_NAME)-*
+	rm -f $(BUILD_DIR)/$(BINARY_NAME)-*
 run:
 	$(GORUN) ./main.go
 deps:
