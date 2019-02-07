@@ -36,3 +36,7 @@
 [[constraint]]
   name = "github.com/go-redis/redis"
   version = "6.15.1"
+
+[[constraint]]
+  name = "github.com/vmihailenco/msgpack"
+  version = "4.0.2"
