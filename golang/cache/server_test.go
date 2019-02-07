@@ -70,6 +70,29 @@ func testMainWrapper(m *testing.M) int {
 	return m.Run()
 }
 
+func TestHeartbeat(t *testing.T) {
+	host := state.listener.Addr().String()
+	res, err := sendRequest(&http.Request{
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   host,
+			Path:   "/ping",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(b)
+	if text != "OK" {
+		t.Fatalf("Response mismatch. Expected: OK, Got: %s", text)
+	}
+}
+
 func TestCache(t *testing.T) {
 	req := &http.Request{
 		URL: &url.URL{
@@ -83,6 +106,7 @@ func TestCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer firstResponse.Body.Close()
 
 	// HACK: Sleep for a second before sending another request
 	time.Sleep(time.Second)
@@ -96,6 +120,7 @@ func TestCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer secondResponse.Body.Close()
 
 	firstBody, err := ioutil.ReadAll(firstResponse.Body)
 	if err != nil {
