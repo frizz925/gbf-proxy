@@ -5,7 +5,10 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"testing"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type testWebServer struct {
@@ -28,6 +31,48 @@ func TestForbidden(t *testing.T) {
 	code := res.StatusCode
 	if code != 403 {
 		t.Fatalf("Request is not forbidden! Status code: %d", code)
+	}
+}
+
+func TestAllowed(t *testing.T) {
+	s := New(&ServerConfig{})
+	l, err := s.Open("localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := createClient(l)
+	res, err := c.Get("http://game.granbluefantasy.jp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code := res.StatusCode
+	if code != 200 {
+		t.Fatalf("Request error. Status code: %d", code)
+	}
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	title := doc.Find("title").Text()
+	if title != "グランブルーファンタジー" {
+		t.Fatal("Invalid loaded page")
+	}
+}
+
+func TestAllowedCache(t *testing.T) {
+	s := New(&ServerConfig{})
+	l, err := s.Open("localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := createClient(l)
+	res, err := c.Get("http://game-a.granbluefantasy.jp/assets_en/font/basic.woff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code := res.StatusCode
+	if code != 200 {
+		t.Fatalf("Request error. Status code: %d", code)
 	}
 }
 
@@ -62,6 +107,19 @@ func TestWebServer(t *testing.T) {
 	bodyText := string(body)
 	if bodyText != expectedResponse {
 		t.Fatalf("Response mismatch! Expected: %s, got: %s", expectedResponse, bodyText)
+	}
+}
+
+func createClient(l net.Listener) *http.Client {
+	host := l.Addr().String()
+	proxyURL := &url.URL{
+		Scheme: "http",
+		Host:   host,
+	}
+	return &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		},
 	}
 }
 
