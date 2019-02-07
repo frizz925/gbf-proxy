@@ -78,7 +78,7 @@ func (s *Server) handleSafe(conn net.Conn) {
 func (s *Server) handle(conn net.Conn) {
 	builder := &strings.Builder{}
 	reader := bufio.NewReader(conn)
-	for {
+	for s.Running() {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err != io.EOF {
