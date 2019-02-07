@@ -33,8 +33,9 @@ var controllerCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		s := controller.New(&controller.ServerConfig{
-			WebAddr: args[1],
-			WebHost: args[2],
+			CacheAddr: args[1],
+			WebAddr:   args[2],
+			WebHost:   args[3],
 		})
 		_, err := s.Open(args[0])
 		if err != nil {
