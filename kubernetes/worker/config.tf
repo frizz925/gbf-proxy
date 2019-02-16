@@ -26,3 +26,8 @@ variable "kube_hash" {
   type = "string"
   default = "76e3d44c248734240b53baf5a1842b9e04abe9b9f2f8c4bcec4373fa605371a0"
 }
+
+variable "project_dir" {
+  type = "string"
+  default = "../.."
+}
