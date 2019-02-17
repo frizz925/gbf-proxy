@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-redis-config
+  namespace: default
+data:
+  redis-config: |
+    port 6379
+    cluster-enabled yes
+    cluster-config-file nodes.conf
+    cluster-node-timeout 5000
+    maxmemory 512mb
+    maxmemory-policy volatile-lfu
+    appendonly yes
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      role: master
+      tier: backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: master
+        tier: backend
+    spec:
+      containers:
+      - name: master
+        image: redis:5
+        command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+        resources:
+          requests:
+            cpu: "0.1"
+            memory: "256M"
+          limits:
+            cpu: "1"
+            memory: "512M"
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - mountPath: /usr/local/etc/redis
+          name: config
+      volumes:
+      - name: config
+        configMap:
+          name: cluster-redis-config
+          items:
+          - key: redis-config
+            path: redis.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+    role: master
+    tier: backend
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+    role: master
+    tier: backend
+---
