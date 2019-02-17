@@ -13,7 +13,7 @@ if [ -f /opt/bin/kubeadm ]; then
     /opt/bin/kubeadm reset -f
 fi
 
-echo "Clearing iptable rules..."
+echo "Clearing iptables' rules..."
 iptables -F
 iptables -t nat -F
 iptables -t mangle -F
