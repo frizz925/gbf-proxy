@@ -5,6 +5,7 @@ CWD=$(pwd)
 SCRIPT_DIR=$(dirname "$0")
 FILES_DIR=$(realpath "$SCRIPT_DIR/../files")
 PROJECT_DIR=$(realpath "$1")
+TAR_PATH="$FILES_DIR/gbf-proxy.tar.gz"
 
 cleanup() {
     cd "$CWD"
@@ -17,4 +18,7 @@ make deps
 make test
 make build-linux
 
-tar -czf "$FILES_DIR/gbf-proxy.tar.gz" Dockerfile bin
+if [ -f "$TAR_PATH" ]; then
+    rm "$TAR_PATH"
+fi
+tar -czf "$TAR_PATH" Dockerfile bin/gbf-proxy-linux-amd64
