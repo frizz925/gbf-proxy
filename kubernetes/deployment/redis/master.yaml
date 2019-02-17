@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cluster-redis-config
+  name: redis-master-config
   namespace: default
 data:
   redis-config: |
@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
       - name: master
-        image: redis:5
+        image: redis:5-alpine
         command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
         resources:
           requests:
@@ -52,7 +52,7 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: cluster-redis-config
+          name: redis-master-config
           items:
           - key: redis-config
             path: redis.conf
