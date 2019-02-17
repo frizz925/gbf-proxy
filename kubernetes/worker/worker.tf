@@ -18,7 +18,8 @@ resource "null_resource" "worker" {
   provisioner "remote-exec" {
     scripts = [
       "../scripts/teardown.sh",
-      "../scripts/setup.sh"
+      "../scripts/setup.sh",
+      "../scripts/network-setup.sh"
     ]
   }
 
