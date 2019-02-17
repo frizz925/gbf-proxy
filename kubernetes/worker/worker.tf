@@ -19,13 +19,13 @@ resource "null_resource" "worker" {
     scripts = [
       "../scripts/teardown.sh",
       "../scripts/setup.sh",
-      "../scripts/network-setup.sh"
     ]
   }
 
   provisioner "remote-exec" {
     inline = [
-      "sudo /opt/bin/kubeadm join ${var.kube_apiserver} --token ${var.kube_token} --discovery-token-ca-cert-hash sha256:${var.kube_hash}"
+      "sudo /opt/bin/kubeadm join ${var.kube_apiserver} --token ${var.kube_token} --discovery-token-ca-cert-hash sha256:${var.kube_hash}",
+      "sudo systemctl restart kubelet.service"
     ]
   }
 
