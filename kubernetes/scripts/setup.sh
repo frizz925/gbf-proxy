@@ -13,7 +13,12 @@ CRICTL_VERSION="v1.13.0"
 K8S_BINARIES=(kubeadm kubelet kubectl)
 
 echo "Getting Kubernetes stable release version..."
-K8S_RELEASE="$(curl -sSL https://dl.k8s.io/release/stable.txt)"
+K8S_RELEASE=$(curl -sSL https://dl.k8s.io/release/stable.txt)
+echo "Using Kubernetes version ${K8S_RELEASE}"
+
+echo "Getting private IP..."
+PRIVATE_IP=$(ip -f inet -o addr show eth1 | head -n 1 | awk '{ print $4 }' | cut -d/ -f1)
+echo "Using private IP ${PRIVATE_IP}"
 
 check_service_active() {
     systemctl is-active "$1" --quiet
@@ -79,6 +84,11 @@ download_k8s_unit_files() {
     echo "Kubernetes systemd unit files downloaded."
 }
 
+if [ ! -f /etc/default/kubelet ]; then
+    echo "Writing extra configurations for kubelet..."
+    echo "KUBELET_EXTRA_ARGS=--node-ip=${PRIVATE_IP}" > /etc/default/kubelet
+fi
+
 if [ ! -d /etc/systemd/system/kubelet.service.d ]; then
     mkdir -p /etc/systemd/system/kubelet.service.d
     download_k8s_unit_files
@@ -89,5 +99,8 @@ if ! check_service_active kubelet.service || ! check_service_enabled kubelet.ser
     systemctl enable --now kubelet.service
 fi
 
-# echo "Pulling Kubernetes images..."
-# kubeadm config images pull
+echo "Pulling Kubernetes images..."
+kubeadm config images pull
+
+echo "Initializing Kubernetes..."
+kubeadm init --apiserver-advertise-address=$PRIVATE_IP --pod-network-cidr=10.244.0.0/16
