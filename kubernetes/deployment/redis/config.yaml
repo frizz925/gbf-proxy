@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-cluster-config
+  namespace: default
+data:
+  redis-config: |
+    port 6379
+    cluster-enabled yes
+    cluster-config-file nodes.conf
+    cluster-node-timeout 5000
+    maxmemory 512mb
+    maxmemory-policy volatile-lfu
+    appendonly yes
+---
