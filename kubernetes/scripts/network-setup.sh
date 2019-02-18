@@ -5,7 +5,7 @@ if [ $EUID -ne 0 ]; then
     echo "Network setup script need to be run as root."
     echo "Re-running network setup script using sudo..."
     sudo /bin/bash "$0"
-    exit $!
+    exit $?
 fi
 
 FLANNEL_VERSION="v0.11.0"
@@ -16,3 +16,4 @@ sysctl net.bridge.bridge-nf-call-iptables=1
 
 echo "Installing Flannel add-on..."
 kubectl apply -f "https://raw.githubusercontent.com/coreos/flannel/${FLANNEL_VERSION}/Documentation/kube-flannel.yml"
+echo "Flannel add-on installed."

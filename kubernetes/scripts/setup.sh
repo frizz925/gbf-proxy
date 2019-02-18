@@ -22,12 +22,12 @@ echo "Using private IP ${PRIVATE_IP}"
 
 check_service_active() {
     systemctl is-active "$1" --quiet
-    return $!
+    return $?
 }
 
 check_service_enabled() {
     systemctl list-unit-files | grep "$1" | grep -q enabled
-    return $!
+    return $?
 }
 
 if ! check_service_active docker.service; then
@@ -99,8 +99,8 @@ if ! check_service_active kubelet.service || ! check_service_enabled kubelet.ser
     systemctl enable --now kubelet.service
 fi
 
-echo "Pulling Kubernetes images..."
-kubeadm config images pull
+# echo "Pulling Kubernetes images..."
+# kubeadm config images pull
 
 # echo "Initializing Kubernetes..."
 # kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-phases=preflight
