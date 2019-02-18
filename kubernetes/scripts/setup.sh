@@ -11,6 +11,7 @@ fi
 CNI_VERSION="v0.7.4"
 CRICTL_VERSION="v1.13.0"
 K8S_BINARIES=(kubeadm kubelet kubectl)
+HOSTNAME=$(hostname)
 
 echo "Getting Kubernetes stable release version..."
 K8S_RELEASE=$(curl -sSL https://dl.k8s.io/release/stable.txt)
@@ -97,6 +98,12 @@ fi
 if ! check_service_active kubelet.service || ! check_service_enabled kubelet.service; then
     echo "Enabling and starting kubelet..."
     systemctl enable --now kubelet.service
+fi
+
+if ! grep -q $HOSTNAME /etc/hosts; then
+    echo "Adding host DNS into /etc/hosts..."
+    echo "$PRIVATE_IP $HOSTNAME" >> /etc/hosts
+    echo "Host DNS added."
 fi
 
 # echo "Pulling Kubernetes images..."
