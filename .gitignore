@@ -44,3 +44,6 @@ override.tf.json
 
 # Unix socket stuff
 *.sock
+
+# Env stuff
+.env
