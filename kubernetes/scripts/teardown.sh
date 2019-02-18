@@ -14,11 +14,13 @@ if [ -f /opt/bin/kubeadm ]; then
     echo "Kubernetes reset."
 fi
 
-echo "Stopping kubelet..."
-systemctl stop kubelet
-echo "Kubelet stopped."
+if [ -f /etc/systemd/system/kubelet.service ]; then
+    echo "Stopping kubelet..."
+    systemctl stop kubelet
+    echo "Kubelet stopped."
+fi
 
-DOCKER_CONTAINERS=$(docker ps -aq)
+DOCKER_CONTAINERS=$(docker ps -aq || printf '')
 if [ -n "$DOCKER_CONTAINERS" ]; then
     echo "Removing docker containers..."
     docker rm -f $DOCKER_CONTAINERS
@@ -35,11 +37,13 @@ echo "Removing files..."
 [ -d /etc/cni ] && rm -rf /etc/cni/
 echo "Files removed."
 
-# echo "Removing network interfaces..."
-# ifconfig cni0 down
-# ifconfig flannel.1 down
-# ifconfig docker0 down
-# echo "Network interfaces removed."
+echo "Removing network interfaces..."
+for i in cni0 flannel.1 docker0; do
+    if [ -e /sys/class/net/$i ]; then
+        ifconfig $i down
+    fi
+done
+echo "Network interfaces removed."
 
 echo "Clearing iptables' rules..."
 iptables -F
