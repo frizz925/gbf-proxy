@@ -1,38 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis-slave
+  name: redis-master
   labels:
     app: redis
 spec:
   selector:
     matchLabels:
       app: redis
-      role: slave
+      role: master
       tier: backend
-  replicas: 4
+  replicas: 1
   template:
     metadata:
       labels:
         app: redis
-        role: slave
+        role: master
         tier: backend
     spec:
       containers:
-      - name: slave
-        image: redis:5-alpine
-        command: ["redis-server", "/redis-slave/redis.conf"]
-        resources:
-          requests:
-            cpu: 100m
-            memory: 250Mi
-          limits:
-            cpu: 1000m
-            memory: 500Mi
+      - name: master
+        image: redis:5.0-alpine
+        command: ["redis-server", "/redis-master/redis.conf"]
         ports:
         - containerPort: 6379
         volumeMounts:
-        - mountPath: /redis-slave
+        - mountPath: /redis-master
           name: config
       volumes:
       - name: config
@@ -45,15 +38,17 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-slave
+  name: redis-master
   labels:
     app: redis
-    role: slave
+    role: master
     tier: backend
 spec:
   ports:
   - port: 6379
+    targetPort: 6379
   selector:
     app: redis
-    role: slave
+    role: master
     tier: backend
+---
