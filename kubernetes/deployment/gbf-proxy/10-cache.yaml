@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gbf-proxy-cache
+  labels:
+    app: gbf-proxy
+    role: cache
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gbf-proxy
+      role: cache
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: gbf-proxy
+        role: cache
+    spec:
+      containers:
+      - name: gbf-proxy-cache
+        image: gbf-proxy:latest
+        imagePullPolicy: Never
+        ports:
+        - name: cache-port
+          containerPort: 8001
+          hostPort: 8001
+        command: ["gbf-proxy", "cache", "0.0.0.0:8001", "-r", "redis:6379"]
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: cache-port
+            httpHeaders:
+            - name: X-Granblue-Cache-API
+              value: "1"
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: cache-port
+            httpHeaders:
+            - name: X-Granblue-Cache-API
+              value: "1"
+          initialDelaySeconds: 15
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gbf-proxy-cache
+  labels:
+    app: gbf-proxy
+    role: cache
+spec:
+  ports:
+  - port: 8001
+    targetPort: 8001
+  selector:
+    app: gbf-proxy
+    role: cache
