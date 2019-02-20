@@ -1,8 +1,8 @@
-# resource "null_resource" "provisioner" {
-#   provisioner "local-exec" {
-#     command = "/bin/bash ../scripts/provision.sh ${pathexpand(var.project_dir)}"
-#   }
-# }
+resource "null_resource" "provisioner" {
+  provisioner "local-exec" {
+    command = "/bin/bash ../scripts/provision.sh ${pathexpand(var.project_dir)}"
+  }
+}
 
 resource "null_resource" "worker" {
   count = "${length(var.worker_hosts)}"
@@ -27,28 +27,32 @@ resource "null_resource" "worker" {
   }
 
   provisioner "remote-exec" {
+    script = "../scripts/setup.sh"
+  }
+
+  provisioner "remote-exec" {
     script = "../scripts/teardown.sh"
     when = "destroy"
   }
 
   provisioner "remote-exec" {
-    script = "../scripts/setup.sh"
-  }
-
-  provisioner "remote-exec" {
     inline = [
       "sudo /opt/bin/kubeadm join ${var.kube_apiserver} --token ${var.kube_token} --discovery-token-ca-cert-hash sha256:${var.kube_hash}",
-      # "sudo systemctl restart kubelet.service",
       "[ ! -e /etc/kubernetes/manifests ] && sudo mkdir -p /etc/kubernetes/manifests || true"
     ]
   }
 
-  # provisioner "file" {
-  #   source = "../files/gbf-proxy.tar.gz"
-  #   destination = "/tmp/gbf-proxy.tar.gz"
-  # }
+  provisioner "file" {
+    source = "../files/gbf-proxy.tar.gz"
+    destination = "/tmp/gbf-proxy.tar.gz"
+  }
 
-  # provisioner "remote-exec" {
-  #   script = "../scripts/docker-setup.sh"
-  # }
+  provisioner "remote-exec" {
+    script = "../scripts/docker-setup.sh"
+  }
+
+  provisioner "remote-exec" {
+    script = "../scripts/docker-teardown.sh"
+    when = "destroy"
+  }
 }
