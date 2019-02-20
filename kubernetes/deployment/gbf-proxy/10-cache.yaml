@@ -56,7 +56,7 @@ metadata:
 spec:
   ports:
   - port: 8001
-    targetPort: 8001
+    targetPort: cache-port
   selector:
     app: gbf-proxy
     role: cache

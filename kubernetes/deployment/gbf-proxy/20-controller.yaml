@@ -26,25 +26,34 @@ spec:
         - name: controller-port
           containerPort: 8000
           hostPort: 8000
-        command: ["gbf-proxy", "controller", "8001", "-r", "redis:6379"]
+        command:
+        - "gbf-proxy"
+        - "controller"
+        - "0.0.0.0:8000"
+        - "--cache-address"
+        - "gbf-proxy-cache:8001"
+        - "--web-address"
+        - "gbf-proxy-web:8080"
+        - "--web-hostname"
+        - "gbf-proxy"
         readinessProbe:
           httpGet:
-            path: /ping
+            path: /
             port: controller-port
             httpHeaders:
-            - name: X-Granblue-Cache-API
-              value: 1
+            - name: Host
+              value: game.granbluefantasy.jp
           initialDelaySeconds: 5
           periodSeconds: 5
         livenessProbe:
           httpGet:
-            path: /ping
+            path: /
             port: controller-port
             httpHeaders:
-            - name: X-Granblue-Cache-API
-              value: 1
-          initialDelaySeconds: 15
-          periodSeconds: 20
+            - name: Host
+              value: game.granbluefantasy.jp
+          initialDelaySeconds: 30
+          periodSeconds: 60
 ---
 apiVersion: v1
 kind: Service
@@ -56,7 +65,7 @@ metadata:
 spec:
   ports:
   - port: 8000
-    targetPort: 8000
+    targetPort: controller-port
   selector:
     app: gbf-proxy
     role: controller

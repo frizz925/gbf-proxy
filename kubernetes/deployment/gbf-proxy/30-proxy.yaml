@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gbf-proxy
+  labels:
+    app: gbf-proxy
+    role: proxy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gbf-proxy
+      role: proxy
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: gbf-proxy
+        role: proxy
+    spec:
+      containers:
+      - name: gbf-proxy
+        image: gbf-proxy:latest
+        imagePullPolicy: Never
+        ports:
+        - name: proxy-port
+          containerPort: 8088
+          hostPort: 8088
+        command:
+        - "gbf-proxy"
+        - "proxy"
+        - "0.0.0.0:8088"
+        - "gbf-proxy-controller:8000"
+        readinessProbe:
+          tcpSocket:
+            port: proxy-port
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: proxy-port
+          initialDelaySeconds: 30
+          periodSeconds: 60
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gbf-proxy
+  labels:
+    app: gbf-proxy
+    role: proxy
+spec:
+  ports:
+  - port: 8088
+    targetPort: proxy-port
+    nodePort: 30088
+  selector:
+    app: gbf-proxy
+    role: proxy
+  type: NodePort
