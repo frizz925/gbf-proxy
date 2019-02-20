@@ -14,6 +14,8 @@ build-darwin:
 	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 -v
 build-linux:
 	GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 -v
+build-alpine-linux:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-alpine-linux-amd64 -v
 build-windows:
 	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64 -v
 test:
@@ -27,5 +29,5 @@ run:
 	$(GORUN) ./main.go
 deps:
 	$(GODEP) ensure
-docker-image: deps test build-linux
+docker-image: deps test build-alpine-linux
 	docker build -t gbf-proxy .
