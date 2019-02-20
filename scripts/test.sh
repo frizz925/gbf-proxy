@@ -44,7 +44,7 @@ CACHE_PID=$!
 sleep 1
 
 echo "Spinning up controller service at $CONTROLLER_ADDRESS..."
-run controller $CONTROLLER_ADDRESS $CACHE_ADDRESS -w example.org:80 --web-hostname example.org 2> /dev/null &
+run controller $CONTROLLER_ADDRESS -c $CACHE_ADDRESS -w example.org:80 --web-hostname example.org 2> /dev/null &
 CONTROLLER_PID=$!
 sleep 1
 
