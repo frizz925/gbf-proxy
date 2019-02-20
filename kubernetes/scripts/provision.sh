@@ -5,7 +5,10 @@ CWD=$(pwd)
 SCRIPT_DIR=$(dirname "$0")
 FILES_DIR=$(realpath "$SCRIPT_DIR/../files")
 PROJECT_DIR=$(realpath "$1")
-TAR_PATH="$FILES_DIR/gbf-proxy.tar.gz"
+
+TAR_FILENAME="gbf-proxy.tar.gz"
+BIN_FILENAME="gbf-proxy-alpine-linux-amd64"
+TAR_PATH="$FILES_DIR/$TAR_FILENAME"
 
 cleanup() {
     cd "$CWD"
@@ -16,9 +19,9 @@ cd "$PROJECT_DIR/golang"
 make clean
 make deps
 make test
-make build-linux
+make build-alpine-linux
 
 if [ -f "$TAR_PATH" ]; then
-    rm "$TAR_PATH"
+    rm -f "$TAR_PATH"
 fi
-tar -czf "$TAR_PATH" Dockerfile bin/gbf-proxy-linux-amd64
+tar -czf "$TAR_PATH" Dockerfile bin/$BIN_FILENAME
