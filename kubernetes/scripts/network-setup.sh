@@ -10,8 +10,8 @@ fi
 
 NETWORKING_ADDON="$1"
 if [ -z "$NETWORKING_ADDON" ]; then
-    echo "Networking add-on not specified. Assuming Cilium add-on."
-    NETWORKING_ADDON="cilium"
+    echo "Networking add-on not specified. Assuming Weave add-on."
+    NETWORKING_ADDON="weave"
 fi
 
 FLANNEL_VERSION="v0.11.0"
@@ -37,6 +37,10 @@ elif [ "$NETWORKING_ADDON" = "cilium" ]; then
     echo "Installing Cilium add-on..."
     kubectl apply -f "https://raw.githubusercontent.com/cilium/cilium/${CILIUM_VERSION}/examples/kubernetes/${K8S_VERSION}/cilium.yaml"
     echo "Cilium add-on installed."
+elif [ "$NETWORKING_ADDON" = "weave" ]; then
+    echo "Installing Weave add-on..."
+    kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+    echo "Weave add-on installed."
 else
     echo "Unknown networking addon '$NETWORKING_ADDON'" >&2
     exit 1
