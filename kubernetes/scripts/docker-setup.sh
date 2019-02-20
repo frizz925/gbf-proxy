@@ -1,20 +1,28 @@
 #!/bin/bash
 set -e
 
-if [ -d /tmp/gbf-proxy ]; then
-    rm -rf /tmp/gbf-proxy
+PROJECT_DIR="/tmp/gbf-proxy"
+TARBALL_PATH="/tmp/gbf-proxy.tar.gz"
+IMAGE_NAME="gbf-proxy:latest"
+
+if [ ! -d $PROJECT_DIR ]; then
+    echo "Creating project directory..."
+    mkdir -p $PROJECT_DIR
 fi
-mkdir -p /tmp/gbf-proxy
 
-echo "Extracting archive..."
-tar -C /tmp/gbf-proxy -f /tmp/gbf-proxy.tar.gz -xz
-echo "Archive extracted."
+if [ ! -e $TARBALL_PATH ]; then
+    echo "Tarball file not found at '${TARBALL_PATH}'" >&2
+    exit 1
+fi
 
-cd /tmp/gbf-proxy
-if [ -n "$(docker images -q gbf-proxy:latest)" ]; then
-    docker rmi gbf-proxy:latest
+echo "Extracting tarball..."
+tar -C $PROJECT_DIR -f $TARBALL_PATH -xz
+
+if [ -n "$(docker images -q $IMAGE_NAME)" ]; then
+    echo "Removing existing docker image..."
+    docker rmi $IMAGE_NAME
 fi
 
 echo "Building Docker image..."
-docker build -qt gbf-proxy:latest .
+docker build -qt $IMAGE_NAME $PROJECT_DIR
 echo "Docker image built."
