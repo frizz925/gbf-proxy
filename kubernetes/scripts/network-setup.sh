@@ -4,7 +4,7 @@ set -e
 if [ $EUID -ne 0 ]; then
     echo "Network setup script need to be run as root."
     echo "Re-running network setup script using sudo..."
-    sudo /bin/bash "$0" $@
+    sudo -HE /bin/bash "$0" $@
     exit $?
 fi
 

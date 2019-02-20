@@ -4,7 +4,7 @@ set -e
 if [ $EUID -ne 0 ]; then
     echo "Master node setup script need to be run as root."
     echo "Re-running master node setup script using sudo..."
-    sudo /bin/bash "$0" $@
+    sudo -HE /bin/bash "$0" $@
     exit $?
 fi
 
@@ -23,5 +23,8 @@ fi
 
 echo "Using IP address ${IP_ADDRESS}"
 echo "Initializing Kubernetes..."
-kubeadm init --apiserver-advertise-address=$IP_ADDRESS $KUBEADM_INIT_ARGS
+if [ -n "$KUBEADM_EXTRA_ARGS" ]; then
+    echo "kubeadm extra args: ${KUBEADM_EXTRA_ARGS}"
+fi
+kubeadm init --apiserver-advertise-address=$IP_ADDRESS $KUBEADM_EXTRA_ARGS
 echo "Kubernetes initialized."

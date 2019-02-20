@@ -4,7 +4,7 @@ set -e
 if [ $EUID -ne 0 ]; then
     echo "Teardown script need to be run as root."
     echo "Re-running teardown script using sudo..."
-    sudo /bin/bash "$0"
+    sudo -HE /bin/bash "$0"
     exit $?
 fi
 
@@ -31,19 +31,21 @@ echo "Stopping docker..."
 systemctl stop docker
 echo "Docker stopped."
 
-echo "Removing files..."
-[ -d /var/lib/cni ] && rm -rf /var/lib/cni/
-[ -d /var/lib/kubelet ] && rm -rf /var/lib/kubelet/*
-[ -d /etc/cni ] && rm -rf /etc/cni/
-echo "Files removed."
-
-echo "Removing network interfaces..."
-for i in cni0 flannel.1 docker0; do
-    if [ -e /sys/class/net/$i ]; then
-        ifconfig $i down
+for d in /var/lib/cni /var/lib/kubelet /etc/cni; do
+    if [ -d $d ]; then
+        echo "Removing directory: $d..."
+        rm -rf $d
+        echo "Directory removed: $d."
     fi
 done
-echo "Network interfaces removed."
+
+for i in cni0 flannel.1 docker0 weave cilium_host cilium_net cilium_vxlan; do
+    if [ -e /sys/class/net/$i ]; then
+        echo "Removing network interface: $i..."
+        ifconfig $i down
+        echo "Network interface removed: $i."
+    fi
+done
 
 echo "Clearing iptables' rules..."
 iptables -F
