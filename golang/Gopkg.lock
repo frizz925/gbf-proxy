@@ -50,6 +50,14 @@
   version = "v1.0"
 
 [[projects]]
+  digest = "1:808cdddf087fb64baeae67b8dfaee2069034d9704923a3cb8bd96a995421a625"
+  name = "github.com/patrickmn/go-cache"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0"
+  version = "v2.1.0"
+
+[[projects]]
   digest = "1:645cabccbb4fa8aab25a956cbcbdf6a6845ca736b2c64e197ca7cbb9d210b939"
   name = "github.com/spf13/cobra"
   packages = ["."]
@@ -112,6 +120,7 @@
   input-imports = [
     "github.com/PuerkitoBio/goquery",
     "github.com/go-redis/redis",
+    "github.com/patrickmn/go-cache",
     "github.com/spf13/cobra",
     "github.com/vmihailenco/msgpack",
   ]

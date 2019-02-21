@@ -39,6 +39,6 @@ var cacheCmd = &cobra.Command{
 }
 
 func init() {
-	cacheCmd.PersistentFlags().StringP("redis-address", "r", "localhost:6379", "The address for the Redis server")
+	cacheCmd.PersistentFlags().StringP("redis-address", "r", "", "The address for the Redis server")
 	rootCmd.AddCommand(cacheCmd)
 }

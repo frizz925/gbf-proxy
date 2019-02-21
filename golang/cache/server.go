@@ -2,6 +2,7 @@ package cache
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/patrickmn/go-cache"
 
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
@@ -20,6 +23,7 @@ import (
 const (
 	DefaultExpirationTime = time.Hour
 	DefaultHeartbeatTime  = time.Minute
+	CleanUpIntervalTime   = time.Minute
 	CacheAPIHeaderName    = "X-Granblue-Cache-API"
 )
 
@@ -31,6 +35,7 @@ type ServerConfig struct {
 type Server struct {
 	base           *lib.BaseServer
 	config         *ServerConfig
+	cache          *cache.Cache
 	redis          *redis.Client
 	redisAvailable bool
 	lock           *sync.Mutex
@@ -49,11 +54,12 @@ type CacheReader struct {
 }
 
 func New(config *ServerConfig) lib.Server {
+	internalCache := cache.New(DefaultExpirationTime, CleanUpIntervalTime)
 	redisClient := config.Redis
 	if redisClient == nil {
 		redisAddr := config.RedisAddr
 		if redisAddr == "" {
-			log.Printf("Redis address not set. In-memory caching capability disabled.")
+			log.Printf("Redis address not set. Falling back to built-in in-memory caching.")
 		} else {
 			redisClient = redis.NewClient(&redis.Options{
 				Addr:     redisAddr,
@@ -66,6 +72,7 @@ func New(config *ServerConfig) lib.Server {
 	return &Server{
 		base:           lib.NewBaseServer("Cache"),
 		config:         config,
+		cache:          internalCache,
 		redis:          redisClient,
 		redisAvailable: redisClient != nil,
 		lock:           &sync.Mutex{},
@@ -177,7 +184,7 @@ func (s *Server) HasCache(req *http.Request) bool {
 
 func (s *Server) FetchFromCache(req *http.Request) (*http.Response, error) {
 	key := GetKeyForRequest(req)
-	b, err := s.redis.Get(key).Bytes()
+	b, err := s.FetchRawFromCache(key)
 	if err != nil {
 		return nil, err
 	}
@@ -198,6 +205,18 @@ func (s *Server) FetchFromCache(req *http.Request) (*http.Response, error) {
 	}, nil
 }
 
+func (s *Server) FetchRawFromCache(key string) ([]byte, error) {
+	if s.RedisAvailable() {
+		return s.redis.Get(key).Bytes()
+	} else {
+		b, found := s.cache.Get(key)
+		if !found {
+			return nil, fmt.Errorf("Cache with key '%s' not found", key)
+		}
+		return b.([]byte), nil
+	}
+}
+
 func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 	u := req.URL
 	if u.Host == "" {
@@ -214,7 +233,7 @@ func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 
 func (s *Server) ShouldCache(req *http.Request, res *http.Response) bool {
 	// TODO: Add logic on which request or response we should cache
-	return s.RedisAvailable()
+	return true
 }
 
 func (s *Server) CacheAsync(req *http.Request, res *http.Response, body []byte, callback func(error)) {
@@ -235,8 +254,13 @@ func (s *Server) Cache(req *http.Request, res *http.Response, body []byte) error
 		return err
 	}
 	key := GetKeyForRequest(req)
-	status := s.redis.Set(key, cache, DefaultExpirationTime)
-	return status.Err()
+	if s.RedisAvailable() {
+		status := s.redis.Set(key, cache, DefaultExpirationTime)
+		return status.Err()
+	} else {
+		s.cache.Set(key, cache, DefaultExpirationTime)
+		return nil
+	}
 }
 
 func (s *Server) RedisAvailable() bool {

@@ -10,14 +10,11 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/go-redis/redis"
 )
 
 type testState struct {
 	server   *Server
 	config   *ServerConfig
-	redis    *redis.Client
 	client   *http.Client
 	listener net.Listener
 }
@@ -29,20 +26,7 @@ func TestMain(m *testing.M) {
 }
 
 func testMainWrapper(m *testing.M) int {
-	redis := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
-	defer redis.FlushAll()
-	err := redis.FlushAll().Err()
-	if err != nil {
-		panic(err)
-	}
-
-	config := &ServerConfig{
-		Redis: redis,
-	}
+	config := &ServerConfig{}
 	s := New(config)
 	l, err := s.Open("localhost:0")
 	if err != nil {
@@ -63,7 +47,6 @@ func testMainWrapper(m *testing.M) int {
 	state = &testState{
 		server:   s.(*Server),
 		config:   config,
-		redis:    redis,
 		client:   client,
 		listener: l,
 	}
@@ -121,7 +104,7 @@ func TestCache(t *testing.T) {
 	// HACK: Sleep for a second before sending another request
 	time.Sleep(time.Second)
 	key := GetKeyForRequest(req)
-	err = state.redis.Get(key).Err()
+	_, err = state.server.FetchRawFromCache(key)
 	if err != nil {
 		t.Fatal(err)
 	}

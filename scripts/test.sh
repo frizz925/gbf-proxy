@@ -14,6 +14,7 @@ echo "OK"
 CACHE_ADDRESS="127.0.0.1:8001"
 CONTROLLER_ADDRESS="127.0.0.1:8000"
 PROXY_ADDRESS="127.0.0.1:8088"
+REDIS_ADDRESS="127.0.0.1:6379"
 ASSET_URL="http://game-a.granbluefantasy.jp/assets/font/basic_alphabet.woff"
 BIN_DIR="/tmp"
 BIN_NAME="gbf-proxy-$(date +%s)"
@@ -39,7 +40,7 @@ request() {
 }
 
 echo "Spinning up cache service at $CACHE_ADDRESS"
-run cache $CACHE_ADDRESS 2> /dev/null &
+run cache $CACHE_ADDRESS -r $REDIS_ADDRESS 2> /dev/null &
 CACHE_PID=$!
 sleep 1
 
