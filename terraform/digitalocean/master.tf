@@ -29,19 +29,6 @@ resource "digitalocean_droplet" "master" {
     private_key = "${file(var.ssh_private_key)}"
     timeout = "2m"
   }
-
-  provisioner "remote-exec" {
-    scripts = [
-      "../../kubernetes/scripts/setup.sh",
-      "../../kubernetes/scripts/master-setup.sh",
-      "../../kubernetes/scripts/network-setup.sh"
-    ]
-  }
-
-  provisioner "remote-exec" {
-    script = "../../kubernetes/scripts/teardown.sh"
-    when = "destroy"
-  }
 }
 
 resource "digitalocean_firewall" "master" {
