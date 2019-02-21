@@ -10,6 +10,10 @@ variable "master_pvt_key" {
   type = "string"
 }
 
+variable "worker_users" {
+  type = "list"
+}
+
 variable "worker_hosts" {
   type = "list"
 }

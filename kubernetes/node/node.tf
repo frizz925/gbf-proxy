@@ -9,7 +9,7 @@ resource "null_resource" "node" {
 
   connection {
     type = "ssh"
-    user = "core"
+    user = "${element(var.node_users, count.index)}"
     host = "${element(var.node_hosts, count.index)}"
     private_key = "${file(var.node_pvt_key)}"
     timeout = "2m"

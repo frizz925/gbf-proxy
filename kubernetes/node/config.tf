@@ -1,3 +1,7 @@
+variable "node_users" {
+  type = "list"
+}
+
 variable "node_hosts" {
   type = "list"
 }

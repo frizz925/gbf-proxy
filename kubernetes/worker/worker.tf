@@ -34,7 +34,7 @@ resource "null_resource" "worker" {
 
   connection {
     type = "ssh"
-    user = "core"
+    user = "${element(var.worker_users, count.index)}"
     host = "${element(var.worker_hosts, count.index)}"
     private_key = "${file(var.worker_pvt_key)}"
     timeout = "2m"
