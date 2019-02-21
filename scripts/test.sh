@@ -11,9 +11,9 @@ echo "OK"
 
 # Testing using external tool
 # Setup
-CACHE_ADDRESS="127.0.0.1:8001"
-CONTROLLER_ADDRESS="127.0.0.1:8000"
-PROXY_ADDRESS="127.0.0.1:8088"
+CACHE_ADDRESS="127.0.0.1:28001"
+CONTROLLER_ADDRESS="127.0.0.1:28000"
+PROXY_ADDRESS="127.0.0.1:28088"
 REDIS_ADDRESS="127.0.0.1:6379"
 ASSET_URL="http://game-a.granbluefantasy.jp/assets/font/basic_alphabet.woff"
 BIN_DIR="/tmp"
