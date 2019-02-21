@@ -29,7 +29,7 @@ spec:
           exec:
             command: ["redis-cli", "ping"]
           initialDelaySeconds: 20
-          periodSeconds: 3
+          periodSeconds: 30
         volumeMounts:
         - name: conf
           mountPath: /conf

@@ -13,7 +13,6 @@ spec:
       role: controller
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: gbf-proxy
         role: controller
@@ -32,9 +31,9 @@ spec:
         - "--cache-address"
         - "gbf-proxy-cache:8001"
         - "--web-address"
-        - "gbf-proxy-web:8080"
+        - "gbf-proxy-web:80"
         - "--web-hostname"
-        - "gbf-proxy"
+        - "gbf-proxy.kogane.moe"
         readinessProbe:
           httpGet:
             path: /

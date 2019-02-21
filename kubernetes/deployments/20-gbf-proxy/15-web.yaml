@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gbf-proxy-web
+  labels:
+    app: gbf-proxy
+    role: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gbf-proxy
+      role: web
+  template:
+    metadata:
+      labels:
+        app: gbf-proxy
+        role: web
+    spec:
+      containers:
+      - name: gbf-proxy-web
+        image: gbf-proxy-web:latest
+        imagePullPolicy: Never
+        ports:
+        - name: web-port
+          containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /
+            port: web-port
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: web-port
+          initialDelaySeconds: 15
+          periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gbf-proxy-web
+  labels:
+    app: gbf-proxy
+    role: web
+spec:
+  ports:
+  - port: 80
+    targetPort: web-port
+  selector:
+    app: gbf-proxy
+    role: web
