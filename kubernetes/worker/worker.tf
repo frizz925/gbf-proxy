@@ -21,18 +21,22 @@ resource "null_resource" "worker" {
     create_before_destroy = true
   }
 
-  provisioner "local-exec" {
-    command = "/bin/bash ../scripts/node-teardown.sh ${element(var.worker_names, count.index)}"
-    when = "destroy"
-  }
-
   provisioner "remote-exec" {
     script = "../scripts/setup.sh"
   }
 
+  provisioner "file" {
+    source = "../files/gbf-proxy.tar.gz"
+    destination = "/tmp/gbf-proxy.tar.gz"
+  }
+
+  provisioner "file" {
+    source = "../files/gbf-proxy-web.tar.gz"
+    destination = "/tmp/gbf-proxy-web.tar.gz"
+  }
+
   provisioner "remote-exec" {
-    script = "../scripts/teardown.sh"
-    when = "destroy"
+    script = "../scripts/docker-setup.sh"
   }
 
   provisioner "remote-exec" {
@@ -42,13 +46,15 @@ resource "null_resource" "worker" {
     ]
   }
 
-  provisioner "file" {
-    source = "../files/gbf-proxy.tar.gz"
-    destination = "/tmp/gbf-proxy.tar.gz"
+  # Tear-down stuff go here
+  provisioner "local-exec" {
+    command = "/bin/bash ../scripts/node-teardown.sh ${element(var.worker_names, count.index)}"
+    when = "destroy"
   }
 
   provisioner "remote-exec" {
-    script = "../scripts/docker-setup.sh"
+    script = "../scripts/teardown.sh"
+    when = "destroy"
   }
 
   provisioner "remote-exec" {
