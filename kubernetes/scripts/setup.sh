@@ -152,9 +152,3 @@ if ! grep -q $HOSTNAME /etc/hosts; then
     echo "$PRIVATE_IP $HOSTNAME" >> /etc/hosts
     echo "Host DNS added."
 fi
-
-# echo "Pulling Kubernetes images..."
-# kubeadm config images pull
-
-# echo "Initializing Kubernetes..."
-# kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-phases=preflight
