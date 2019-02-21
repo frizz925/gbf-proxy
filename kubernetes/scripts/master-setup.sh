@@ -21,6 +21,9 @@ if ! systemctl is-active docker.service --quiet; then
     echo "Docker service started."
 fi
 
+echo "Pulling Kubernetes images..."
+kubeadm config images pull
+
 echo "Using IP address ${IP_ADDRESS}"
 echo "Initializing Kubernetes..."
 if [ -n "$KUBEADM_EXTRA_ARGS" ]; then
