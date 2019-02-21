@@ -39,7 +39,7 @@ request() {
     curl -fsSL -x http://$PROXY_ADDRESS $@
 }
 
-echo "Spinning up cache service at $CACHE_ADDRESS"
+echo "Spinning up cache service at $CACHE_ADDRESS..."
 run cache $CACHE_ADDRESS -r $REDIS_ADDRESS 2> /dev/null &
 CACHE_PID=$!
 sleep 1
@@ -74,3 +74,22 @@ request example.org | grep -q "Example Domain" && echo "OK" || (echo "FAIL!" && 
 # Test forbidden
 printf "Testing forbidden host... "
 request github.com 2> /dev/null && echo "Not forbidden!" && exit 1 || echo "OK"
+
+LOCAL_LOG_PATH=/tmp/gbf-proxy-local.log
+if [ -f $LOCAL_LOG_PATH ]; then
+    rm $LOCAL_LOG_PATH
+fi
+
+printf "Spinning up local service... "
+run local > $LOCAL_LOG_PATH &
+LOCAL_PID=$!
+pkill -0 -P $LOCAL_PID > /dev/null 2>&1 || (echo "Local service fails to run!" >&2 && exit 1)
+while [ -z "$LOCAL_ADDRESS" ]; do
+    LOCAL_ADDRESS=$(cat $LOCAL_LOG_PATH | awk '{ print $NF }')
+    sleep 1
+done
+echo "Local service listening at $LOCAL_ADDRESS"
+PROXY_ADDRESS="$LOCAL_ADDRESS"
+
+printf "Testing local service... "
+request game.granbluefantasy.jp | grep -q "グランブルーファンタジー" && echo "OK" || (echo "FAIL!" && exit 1)
