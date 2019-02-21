@@ -171,15 +171,17 @@ func (s *Server) Fetch(req *http.Request) (*http.Response, error) {
 }
 
 func (s *Server) HasCache(req *http.Request) bool {
-	if !s.RedisAvailable() {
-		return false
-	}
 	key := GetKeyForRequest(req)
-	val, err := s.redis.Exists(key).Result()
-	if err != nil {
-		panic(err)
+	if s.RedisAvailable() {
+		val, err := s.redis.Exists(key).Result()
+		if err != nil {
+			panic(err)
+		}
+		return val == 1
+	} else {
+		_, found := s.cache.Get(key)
+		return found
 	}
-	return val == 1
 }
 
 func (s *Server) FetchFromCache(req *http.Request) (*http.Response, error) {
