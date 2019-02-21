@@ -25,7 +25,6 @@ spec:
         ports:
         - name: controller-port
           containerPort: 8000
-          hostPort: 8000
         command:
         - "gbf-proxy"
         - "controller"

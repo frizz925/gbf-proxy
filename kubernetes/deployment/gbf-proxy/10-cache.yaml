@@ -25,7 +25,6 @@ spec:
         ports:
         - name: cache-port
           containerPort: 8001
-          hostPort: 8001
         command: ["gbf-proxy", "cache", "0.0.0.0:8001", "-r", "redis:6379"]
         readinessProbe:
           httpGet:

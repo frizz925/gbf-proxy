@@ -6,7 +6,7 @@ metadata:
     app: gbf-proxy
     role: proxy
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: gbf-proxy
@@ -41,20 +41,3 @@ spec:
             port: proxy-port
           initialDelaySeconds: 30
           periodSeconds: 60
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: gbf-proxy
-  labels:
-    app: gbf-proxy
-    role: proxy
-spec:
-  ports:
-  - port: 8088
-    targetPort: proxy-port
-    nodePort: 30088
-  selector:
-    app: gbf-proxy
-    role: proxy
-  type: NodePort
