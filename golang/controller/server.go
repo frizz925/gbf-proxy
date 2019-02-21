@@ -66,8 +66,9 @@ func (s *Server) Open(addr string) (net.Listener, error) {
 	}
 	if s.WebAvailable() {
 		if s.config.WebHost == "" {
-			log.Printf("Web hostname not set. Using the default %s.", addr)
-			s.config.WebHost = addr
+			hostname := httpHelpers.AddrToHost(addr)
+			log.Printf("Web hostname not set. Using the default %s.", hostname)
+			s.config.WebHost = hostname
 		}
 		log.Printf("Controller at %s -> Web server at %s", addr, s.config.WebAddr)
 	}
@@ -105,14 +106,10 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
 	u := httpHelpers.ParseURL(req)
-	hostname := u.Host
-	tokens := strings.SplitN(hostname, ":", 2)
-	if len(tokens) >= 2 {
-		hostname = tokens[0]
-	}
+	hostname := u.Hostname()
 
 	c := s.client
-	if s.WebAvailable() && u.Host == s.config.WebHost {
+	if s.WebAvailable() && hostname == s.config.WebHost {
 		httpHelpers.LogRequest(s.base.Name, req, "Static web access")
 		u.Host = s.config.WebAddr
 	} else if strings.HasSuffix(hostname, ".granbluefantasy.jp") {

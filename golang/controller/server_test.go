@@ -85,13 +85,13 @@ func TestWebServer(t *testing.T) {
 	addr := w.Addr().String()
 	config := &ServerConfig{
 		WebAddr: addr,
+		WebHost: "127.0.0.1",
 	}
 	s := New(config)
 	l, err := s.Open("localhost:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	config.WebHost = l.Addr().String()
 	res, err := makeRequest(l)
 	if err != nil {
 		t.Fatal(err)
