@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 SCRIPTS_DIR=$(realpath $(dirname $0))
 DEPLOYMENTS_DIR=$(realpath $SCRIPTS_DIR/../deployments)

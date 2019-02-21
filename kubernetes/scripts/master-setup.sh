@@ -8,11 +8,17 @@ if [ $EUID -ne 0 ]; then
     exit $?
 fi
 
-IP_ADDRESS="$1"
-if [ -z "$IP_ADDRESS" ]; then
-    echo "IP address argument not provided. Using default IP address..."
-    GATEWAY_IP=$(ip route | awk '/^default/{ print $3 }')
-    IP_ADDRESS=$(ip route get $GATEWAY_IP | awk 'NR==1{ print $5 }')
+if [ -z "$KUBEADM_APISERVER_ADDRESS" ]; then
+    if [ -n "$1" ]; then
+        KUBEADM_APISERVER_ADDRESS="$1"
+    elif [ -n "$LOCAL_IFACE" ]; then
+        echo "IP address argument not provided. Using provided network interface IP address..."
+        KUBEADM_APISERVER_ADDRESS=$(ip -f inet -o addr show $LOCAL_IFACE | awk '{ print $4 }' | cut -d/ -f1 | head -n1)
+    else
+        echo "IP address argument not provided. Using default IP address..."
+        GATEWAY_IP=$(ip route | awk '/^default/{ print $3 }')
+        KUBEADM_APISERVER_ADDRESS=$(ip route get $GATEWAY_IP | awk 'NR==1{ print $5 }')
+    fi
 fi
 
 if ! systemctl is-active docker.service --quiet; then
@@ -29,5 +35,5 @@ echo "Initializing Kubernetes..."
 if [ -n "$KUBEADM_EXTRA_ARGS" ]; then
     echo "kubeadm extra args: ${KUBEADM_EXTRA_ARGS}"
 fi
-kubeadm init --apiserver-advertise-address=$IP_ADDRESS $KUBEADM_EXTRA_ARGS
+kubeadm init --apiserver-advertise-address=$KUBEADM_APISERVER_ADDRESS $KUBEADM_EXTRA_ARGS
 echo "Kubernetes initialized."

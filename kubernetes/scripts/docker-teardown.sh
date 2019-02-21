@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 for d in gbf-proxy gbf-proxy-web; do
     PROJECT_DIR="/tmp/$d"

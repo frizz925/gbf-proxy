@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 SCRIPTS_DIR=$(realpath $(dirname $0))
 DEPLOYMENTS_DIR=$(realpath $SCRIPTS_DIR/../deployments)
@@ -7,7 +8,7 @@ PROJECT_DIR=$(realpath $SCRIPTS_DIR/../..)
 delete_configmap() {
     CONFIGMAP_NAME="$1"
     echo "Deleting configmap: ${CONFIGMAP_NAME}..."
-    kubectl delete configmap $CONFIGMAP_NAME
+    kubectl delete configmap $CONFIGMAP_NAME || true
     echo "Configmap deleted: ${CONFIGMAP_NAME}."
 }
 
