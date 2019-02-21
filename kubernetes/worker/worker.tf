@@ -1,6 +1,31 @@
-resource "null_resource" "provisioner" {
-  provisioner "local-exec" {
-    command = "/bin/bash ../scripts/provision.sh ${pathexpand(var.project_dir)}"
+resource "null_resource" "master" {
+  count = "${length(var.worker_hosts)}"
+
+  connection {
+    type = "ssh"
+    user = "${var.master_user}"
+    host = "${var.master_host}"
+    private_key = "${file(var.master_pvt_key)}"
+    timeout = "2m"
+  }
+
+  # Workaround due to on-going issue
+  # https://github.com/hashicorp/terraform/issues/13549
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  provisioner "file" {
+    source = "../scripts/node-teardown.sh"
+    destination = "/tmp/node-teardown.sh"
+    when = "destroy"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "bash /tmp/node-teardown.sh ${element(var.worker_names, count.index)}"
+    ]
+    when = "destroy"
   }
 }
 
@@ -15,28 +40,12 @@ resource "null_resource" "worker" {
     timeout = "2m"
   }
 
-  # Workaround due to on-going issue
-  # https://github.com/hashicorp/terraform/issues/13549
   lifecycle {
     create_before_destroy = true
   }
 
   provisioner "remote-exec" {
     script = "../scripts/setup.sh"
-  }
-
-  provisioner "file" {
-    source = "../files/gbf-proxy.tar.gz"
-    destination = "/tmp/gbf-proxy.tar.gz"
-  }
-
-  provisioner "file" {
-    source = "../files/gbf-proxy-web.tar.gz"
-    destination = "/tmp/gbf-proxy-web.tar.gz"
-  }
-
-  provisioner "remote-exec" {
-    script = "../scripts/docker-setup.sh"
   }
 
   provisioner "remote-exec" {
@@ -47,18 +56,8 @@ resource "null_resource" "worker" {
   }
 
   # Tear-down stuff go here
-  provisioner "local-exec" {
-    command = "/bin/bash ../scripts/node-teardown.sh ${element(var.worker_names, count.index)}"
-    when = "destroy"
-  }
-
   provisioner "remote-exec" {
     script = "../scripts/teardown.sh"
-    when = "destroy"
-  }
-
-  provisioner "remote-exec" {
-    script = "../scripts/docker-teardown.sh"
     when = "destroy"
   }
 }

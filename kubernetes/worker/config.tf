@@ -1,3 +1,15 @@
+variable "master_user" {
+  type = "string"
+}
+
+variable "master_host" {
+  type = "string"
+}
+
+variable "master_pvt_key" {
+  type = "string"
+}
+
 variable "worker_hosts" {
   type = "list"
 }
