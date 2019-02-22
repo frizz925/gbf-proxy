@@ -235,7 +235,8 @@ func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 
 func (s *Server) ShouldCache(req *http.Request, res *http.Response) bool {
 	// TODO: Add logic on which request or response we should cache
-	return true
+	code := res.StatusCode
+	return code == 200
 }
 
 func (s *Server) CacheAsync(req *http.Request, res *http.Response, body []byte, callback func(error)) {
