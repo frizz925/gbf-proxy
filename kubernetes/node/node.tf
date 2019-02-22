@@ -25,6 +25,11 @@ resource "null_resource" "node" {
     destination = "/tmp/gbf-proxy-web.tar.gz"
   }
 
+  provisioner "file" {
+    source = "../files/gbf-proxy-version"
+    destination = "/tmp/gbf-proxy-version"
+  }
+
   provisioner "remote-exec" {
     script = "../scripts/docker-setup.sh"
   }

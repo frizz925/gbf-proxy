@@ -6,11 +6,13 @@ SCRIPTS_DIR=$(realpath $(dirname "$0"))
 FILES_DIR=$(realpath "$SCRIPTS_DIR/../files")
 PROJECT_DIR=$(realpath "$1")
 
-TAR_FILENAME="gbf-proxy.tar.gz"
 BIN_FILENAME="gbf-proxy-alpine-linux-amd64"
+TAR_FILENAME="gbf-proxy.tar.gz"
 WEB_TAR_FILENAME="gbf-proxy-web.tar.gz"
+VERSION_FILENAME="gbf-proxy-version"
 TAR_PATH="$FILES_DIR/$TAR_FILENAME"
 WEB_TAR_PATH="$FILES_DIR/$WEB_TAR_FILENAME"
+VERSION_PATH="$FILES_DIR/$VERSION_FILENAME"
 
 cleanup() {
     cd "$CWD"
@@ -36,5 +38,10 @@ echo "Granblue Proxy tarball created."
 
 echo "Creating static web tarball..."
 cd "$PROJECT_DIR"
+if [ -f "$WEB_TAR_PATH" ]; then
+    rm -f "$WEB_TAR_PATH"
+fi
 tar -czf "$WEB_TAR_PATH" web-docker web
 echo "Static web tarball created."
+
+echo $(VERSION) > $VERSION_PATH
