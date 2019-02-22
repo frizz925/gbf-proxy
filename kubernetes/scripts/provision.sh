@@ -44,4 +44,4 @@ fi
 tar -czf "$WEB_TAR_PATH" web-docker web
 echo "Static web tarball created."
 
-echo $(VERSION) > $VERSION_PATH
+echo $VERSION > $VERSION_PATH
