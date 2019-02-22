@@ -7,7 +7,7 @@ GORUN=$(GOCMD) run
 
 BUILD_DIR=bin
 BINARY_NAME=gbf-proxy
-VERSION=$(shell git describe --always --long --dirty)
+VERSION=$(shell git describe --always --long --dirty 2>/dev/null || printf latest)
 
 all: deps test build
 build:
