@@ -33,4 +33,6 @@ resource "null_resource" "node" {
     script = "../scripts/docker-teardown.sh"
     when = "destroy"
   }
+
+  depends_on = ["null_resource.provisioner"]
 }

@@ -60,4 +60,6 @@ resource "null_resource" "worker" {
     script = "../scripts/teardown.sh"
     when = "destroy"
   }
+
+  depends_on = ["null_resource.master"]
 }
