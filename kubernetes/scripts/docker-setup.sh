@@ -1,12 +1,23 @@
 #!/bin/bash
 set -e
 
+if [ -z "$VERSION" ]; then
+    VERSION="$1"
+fi
+if [ -z "$VERSION" ]; then
+    VERSION="latest"
+fi
+
 build_project() {
     PROJECT_NAME="$1"
     PROJECT_DIR="/tmp/$PROJECT_NAME"
     TARBALL_PATH="/tmp/$PROJECT_NAME.tar.gz"
-    IMAGE_NAME="${PROJECT_NAME}:latest"
-    DOCKERFILE_PATH="$PROJECT_DIR/$2/Dockerfile"
+    IMAGE_NAME="${PROJECT_NAME}:${VERSION}"
+    DOCKERFILE_PATH="$PROJECT_DIR/Dockerfile"
+
+    if [ -n "$2" ]; then
+        DOCKERFILE_PATH="$PROJECT_DIR/$2/Dockerfile"
+    fi
 
     echo "Building project: ${PROJECT_NAME}..."
     if [ ! -d $PROJECT_DIR ]; then

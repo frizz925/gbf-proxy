@@ -17,13 +17,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Building Granblue Proxy binary file..."
 cd "$PROJECT_DIR/golang"
+VERSION=$(make version | awk 'NR==1{ print $1 }' || printf latest)
+
+echo "Building Granblue Proxy (version: ${VERSION})..."
 make clean
 make deps
 make test
 make build-alpine-linux
-echo "Binary file built."
+echo "Granblue Proxy built."
 
 echo "Creating Granblue Proxy tarball..."
 if [ -f "$TAR_PATH" ]; then
