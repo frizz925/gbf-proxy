@@ -13,12 +13,6 @@ spec:
     - name: default-port
       containerPort: 80
       hostPort: 8088
-    - name: insecure-port
-      containerPort: 80
-      hostPort: 80
-    - name: secure-port
-      containerPort: 80
-      hostPort: 443
     - name: web-port
       containerPort: 8080
       hostPort: 8080
