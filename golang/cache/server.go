@@ -28,13 +28,15 @@ const (
 )
 
 type ServerConfig struct {
-	RedisAddr string
-	Redis     *redis.Client
+	RedisAddr  string
+	Redis      *redis.Client
+	HttpClient *http.Client
 }
 
 type Server struct {
 	base           *lib.BaseServer
 	config         *ServerConfig
+	client         *http.Client
 	cache          *cache.Cache
 	redis          *redis.Client
 	redisAvailable bool
@@ -68,10 +70,15 @@ func New(config *ServerConfig) lib.Server {
 			})
 		}
 	}
+	client := config.HttpClient
+	if client == nil {
+		client = http.DefaultClient
+	}
 
 	return &Server{
 		base:           lib.NewBaseServer("Cache"),
 		config:         config,
+		client:         client,
 		cache:          internalCache,
 		redis:          redisClient,
 		redisAvailable: redisClient != nil,
@@ -224,8 +231,7 @@ func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 	if u.Host == "" {
 		u.Host = req.Header.Get("Host")
 	}
-	c := http.DefaultClient
-	return c.Do(&http.Request{
+	return s.client.Do(&http.Request{
 		URL:    u,
 		Method: req.Method,
 		Header: req.Header,

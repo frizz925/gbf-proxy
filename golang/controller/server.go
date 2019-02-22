@@ -21,10 +21,11 @@ const (
 )
 
 type ServerConfig struct {
-	CacheAddr   string
-	CacheClient *http.Client
-	WebAddr     string
-	WebHost     string
+	CacheAddr     string
+	DefaultClient *http.Client
+	CacheClient   *http.Client
+	WebAddr       string
+	WebHost       string
 }
 
 type Server struct {
@@ -50,11 +51,15 @@ func New(config *ServerConfig) lib.Server {
 	if webAddr == "" {
 		log.Println("Web address not set. Static web capability disabled.")
 	}
+	client := config.DefaultClient
+	if client == nil {
+		client = http.DefaultClient
+	}
 
 	return &Server{
 		base:           lib.NewBaseServer("Controller"),
 		config:         config,
-		client:         http.DefaultClient,
+		client:         client,
 		cache:          cacheClient,
 		cacheAvailable: cacheClient != nil,
 		lock:           &sync.Mutex{},
