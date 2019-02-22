@@ -13,6 +13,7 @@ import (
 	"github.com/Frizz925/gbf-proxy/golang/cache"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
+	"github.com/jinzhu/copier"
 )
 
 const (
@@ -126,12 +127,14 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res, err := c.Do(&http.Request{
-		Method: req.Method,
-		URL:    u,
-		Body:   req.Body,
-		Header: req.Header,
-	})
+	clientReq := &http.Request{}
+	err := copier.Copy(clientReq, req)
+	if err != nil {
+		panic(err)
+	}
+	clientReq.RequestURI = ""
+
+	res, err := c.Do(clientReq)
 	if err != nil {
 		httpHelpers.WriteServerError(w, 502, "Bad gateway", err)
 		return
@@ -149,13 +152,14 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	w.WriteHeader(res.StatusCode)
+
 	length := len(body)
-	for written := 0; written < length; {
-		write, err := w.Write(body[written:])
+	for sent := 0; sent < length; {
+		written, err := w.Write(body[sent:])
 		if err != nil {
 			panic(err)
 		}
-		written += write
+		sent += written
 	}
 }
 

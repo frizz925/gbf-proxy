@@ -78,16 +78,16 @@ func (s *Server) handleSafe(conn net.Conn) {
 
 func (s *Server) handle(conn net.Conn) {
 	builder := &strings.Builder{}
-	reader := bufio.NewReader(conn)
+	buffer := make([]byte, 65535)
 	for s.Running() {
-		line, err := reader.ReadString('\n')
+		read, err := conn.Read(buffer)
 		if err != nil {
-			if err != io.EOF {
+			if !checkNetError(err) {
 				panic(err)
 			}
 			break
 		}
-		builder.WriteString(line)
+		builder.Write(buffer[:read])
 		temp := builder.String()
 		if strings.Contains(temp, "\r\n\r\n") {
 			break
@@ -146,33 +146,29 @@ func (s *Server) handle(conn net.Conn) {
 		established: true,
 		lock:        &sync.Mutex{},
 	}
-	go t.Pipe(peer, conn)
-	go t.Pipe(conn, peer)
+	go t.Pipe(peer, conn, s)
+	t.Pipe(conn, peer, s)
 }
 
-func (t *tunnel) Pipe(src net.Conn, dest net.Conn) {
+func (t *tunnel) Pipe(src net.Conn, dest net.Conn, s *Server) {
 	defer func() {
 		src.Close()
-		dest.Close()
 		if r := recover(); r != nil {
 			log.Println(r)
 		}
 	}()
-	reader := bufio.NewReader(src)
 	buffer := make([]byte, 65535)
-	for t.Established() {
-		n, err := reader.Read(buffer)
+	for s.Running() && t.Established() {
+		read, err := src.Read(buffer)
 		if err != nil {
-			_, ok := err.(*net.OpError)
-			if err != io.EOF && !ok {
+			if !checkNetError(err) {
 				panic(err)
 			}
 			break
 		}
-		err = write(dest, buffer[:n])
+		err = write(dest, buffer[:read])
 		if err != nil {
-			_, ok := err.(*net.OpError)
-			if err != io.EOF && !ok {
+			if !checkNetError(err) {
 				panic(err)
 			}
 			break
@@ -187,6 +183,14 @@ func (t *tunnel) Established() bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	return t.established
+}
+
+func checkNetError(err error) bool {
+	_, ok := err.(*net.OpError)
+	if err != io.EOF && !ok {
+		return false
+	}
+	return true
 }
 
 func respondAndClose(c net.Conn, code int, reason string) {
@@ -214,9 +218,13 @@ func writeString(c net.Conn, responseText string) error {
 
 func write(c net.Conn, response []byte) error {
 	writer := bufio.NewWriter(c)
-	_, err := writer.Write(response)
-	if err != nil {
-		return err
+	length := len(response)
+	for written := 0; written < length; {
+		n, err := writer.Write(response[written:])
+		if err != nil {
+			return err
+		}
+		written += n
 	}
 	writer.Flush()
 	return nil

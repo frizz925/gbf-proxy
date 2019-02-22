@@ -50,6 +50,14 @@
   version = "v1.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:5c3444689562053b027ef3b96372e306adbe0d7d109b6cdd48d01eb80f8bab14"
+  name = "github.com/jinzhu/copier"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
+
+[[projects]]
   digest = "1:808cdddf087fb64baeae67b8dfaee2069034d9704923a3cb8bd96a995421a625"
   name = "github.com/patrickmn/go-cache"
   packages = ["."]
@@ -120,6 +128,7 @@
   input-imports = [
     "github.com/PuerkitoBio/goquery",
     "github.com/go-redis/redis",
+    "github.com/jinzhu/copier",
     "github.com/patrickmn/go-cache",
     "github.com/spf13/cobra",
     "github.com/vmihailenco/msgpack",
