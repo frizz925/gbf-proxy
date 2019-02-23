@@ -22,8 +22,8 @@ build-alpine-linux:
 	GOOS=linux GOARCH=386 CGO_ENABLED=0 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-alpine-linux-386
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-alpine-linux-amd64
 build-windows:
-	GOOS=windows GOARCH=386 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-386
-	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64
+	GOOS=windows GOARCH=386 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe
 test:
 	$(GOTEST) -race ./...
 coverage:
