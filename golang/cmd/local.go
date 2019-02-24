@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
 
 	"github.com/Frizz925/gbf-proxy/golang/local"
 	"github.com/spf13/cobra"
@@ -23,7 +24,8 @@ var localCmd = &cobra.Command{
 	Short: "Start the local Granblue Proxy services",
 	Run: func(cmd *cobra.Command, args []string) {
 		if _, found := os.LookupEnv("GBF_PROXY_DEBUG"); !found {
-			log.SetOutput(new(devNull))
+			logging.DefaultWriter = logging.NullWriter
+			logging.DefaultErrWriter = logging.NullWriter
 		}
 		extProxyAddr, err := cmd.PersistentFlags().GetString("external-proxy")
 		if err != nil {
