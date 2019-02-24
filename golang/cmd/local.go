@@ -7,10 +7,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/Frizz925/gbf-proxy/golang/controller"
-
-	"github.com/Frizz925/gbf-proxy/golang/cache"
-	"github.com/Frizz925/gbf-proxy/golang/proxy"
+	"github.com/Frizz925/gbf-proxy/golang/local"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +20,7 @@ func (d devNull) Write(b []byte) (int, error) {
 // localCmd represents the local command
 var localCmd = &cobra.Command{
 	Use:   "local",
-	Short: "Start the local Granblue Proxy service",
+	Short: "Start the local Granblue Proxy services",
 	Run: func(cmd *cobra.Command, args []string) {
 		if _, found := os.LookupEnv("GBF_PROXY_DEBUG"); !found {
 			log.SetOutput(new(devNull))
@@ -46,23 +43,6 @@ var localCmd = &cobra.Command{
 			fmt.Printf("Using external proxy at %s\n", proxyURL.String())
 		}
 
-		cacheServer := cache.New(&cache.ServerConfig{
-			HttpClient: httpClient,
-		})
-		l, err := cacheServer.Open("127.0.0.1:0")
-		if err != nil {
-			panic(err)
-		}
-
-		controllerServer := controller.New(&controller.ServerConfig{
-			CacheAddr:     l.Addr().String(),
-			DefaultClient: httpClient,
-		})
-		l, err = controllerServer.Open("127.0.0.1:0")
-		if err != nil {
-			panic(err)
-		}
-
 		host, err := cmd.PersistentFlags().GetString("host")
 		if err != nil {
 			panic(err)
@@ -71,19 +51,17 @@ var localCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
+		addr := fmt.Sprintf("%s:%d", host, port)
 
-		proxyAddr := fmt.Sprintf("%s:%d", host, port)
-		proxyServer := proxy.New(&proxy.ServerConfig{
-			BackendAddr: l.Addr().String(),
+		s := local.New(&local.ServerConfig{
+			HttpClient: httpClient,
 		})
-		l, err = proxyServer.Open(proxyAddr)
+		l, err := s.Open(addr)
 		if err != nil {
 			panic(err)
 		}
 		fmt.Printf("Granblue Proxy is listening at %s\n", l.Addr().String())
-		cacheServer.WaitGroup().Wait()
-		controllerServer.WaitGroup().Wait()
-		proxyServer.WaitGroup().Wait()
+		s.WaitGroup().Wait()
 	},
 }
 
