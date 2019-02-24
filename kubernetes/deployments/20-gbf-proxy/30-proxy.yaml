@@ -23,12 +23,12 @@ spec:
         imagePullPolicy: Never
         ports:
         - name: proxy-port
-          containerPort: 8088
+          containerPort: 80
         command:
         - "gbf-proxy"
         - "proxy"
-        - "0.0.0.0:8088"
-        - "gbf-proxy-controller:8000"
+        - "0.0.0.0:80"
+        - "gbf-proxy-controller:80"
         readinessProbe:
           tcpSocket:
             port: proxy-port
@@ -37,8 +37,8 @@ spec:
         livenessProbe:
           tcpSocket:
             port: proxy-port
-          initialDelaySeconds: 30
-          periodSeconds: 60
+          initialDelaySeconds: 5
+          periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
@@ -49,7 +49,7 @@ metadata:
     role: proxy
 spec:
   ports:
-  - port: 8088
+  - port: 80
     targetPort: proxy-port
   selector:
     app: gbf-proxy
