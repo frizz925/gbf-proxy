@@ -21,8 +21,8 @@ type LoggerConfig struct {
 
 type nullWriter struct{}
 
-var DefaultWriter = os.Stdout
-var DefaultErrWriter = os.Stderr
+var DefaultWriter io.Writer = os.Stdout
+var DefaultErrWriter io.Writer = os.Stderr
 var NullWriter = &nullWriter{}
 
 func (w *nullWriter) Write(b []byte) (int, error) {
@@ -34,13 +34,13 @@ func New(config *LoggerConfig) *Logger {
 	if writer == nil {
 		writer = DefaultWriter
 	}
-	logger := log.New(writer, config.Name, log.LstdFlags)
+	logger := log.New(writer, "", log.LstdFlags)
 
 	errWriter := config.ErrWriter
 	if errWriter == nil {
 		errWriter = DefaultErrWriter
 	}
-	errLogger := log.New(errWriter, config.Name, log.LstdFlags)
+	errLogger := log.New(errWriter, "", log.LstdFlags)
 
 	return &Logger{
 		Name:      config.Name,
@@ -90,5 +90,5 @@ func (l *Logger) LogErr(level string, message interface{}) {
 }
 
 func (l *Logger) Format(level string, message interface{}) string {
-	return fmt.Sprintf("[%s] %s", level, message)
+	return fmt.Sprintf("[%s] [%s] %s", l.Name, level, message)
 }
