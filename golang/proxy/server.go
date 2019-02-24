@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
 
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 )
@@ -24,6 +25,7 @@ type Server struct {
 type tunnel struct {
 	established bool
 	lock        *sync.Mutex
+	logger      *logging.Logger
 }
 
 func New(config *ServerConfig) lib.Server {
@@ -33,7 +35,12 @@ func New(config *ServerConfig) lib.Server {
 	}
 }
 
+func (s *Server) Name() string {
+	return s.base.Name
+}
+
 func (s *Server) Open(addr string) (net.Listener, error) {
+	s.base.Logger.Infof("Proxy at %s -> Controller at %s", addr, s.config.BackendAddr)
 	return s.base.Open(addr, s.serve)
 }
 
@@ -70,7 +77,7 @@ func (s *Server) serve(l net.Listener) {
 func (s *Server) handleSafe(conn net.Conn) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println(r)
+			s.base.Logger.Error(r)
 		}
 	}()
 	s.handle(conn)
@@ -97,25 +104,25 @@ func (s *Server) handle(conn net.Conn) {
 	payload := builder.String()
 	sepIdx := strings.Index(payload, "\r\n\r\n")
 	if sepIdx <= 0 {
-		respondAndClose(conn, 400, "Bad Request")
+		s.respondAndClose(conn, 400, "Bad Request")
 		return
 	}
 
 	header := strings.TrimSpace(payload[:sepIdx])
 	lines := strings.Split(header, "\r\n")
 	if len(lines) < 2 {
-		respondAndClose(conn, 400, "Bad Request")
+		s.respondAndClose(conn, 400, "Bad Request")
 		return
 	}
 
 	requestLine := lines[0]
-	log.Printf("[Proxy] %s %s", conn.RemoteAddr(), requestLine)
+	s.base.Logger.Infof("%s %s", conn.RemoteAddr(), requestLine)
 
 	headers := make(map[string]string)
 	for _, line := range lines[1:] {
 		idx := strings.Index(line, ": ")
 		if idx <= 0 {
-			respondAndClose(conn, 400, "Bad Request")
+			s.respondAndClose(conn, 400, "Bad Request")
 			return
 		}
 		name := line[:idx]
@@ -125,13 +132,13 @@ func (s *Server) handle(conn net.Conn) {
 
 	peer, err := net.Dial("tcp", s.config.BackendAddr)
 	if err != nil {
-		respondAndClose(conn, 502, "Bad Gateway")
+		s.respondAndClose(conn, 502, "Bad Gateway")
 		return
 	}
 
 	method := strings.Split(requestLine, " ")[0]
 	if method == "CONNECT" {
-		err := respond(conn, 200, "Connection Established")
+		err := s.respond(conn, 200, "Connection Established")
 		if err != nil {
 			panic(err)
 		}
@@ -145,16 +152,41 @@ func (s *Server) handle(conn net.Conn) {
 	t := &tunnel{
 		established: true,
 		lock:        &sync.Mutex{},
+		logger:      s.base.Logger,
 	}
 	go t.Pipe(peer, conn, s)
 	t.Pipe(conn, peer, s)
+}
+
+func (t *tunnel) Established() bool {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	return t.established
+}
+
+func (s *Server) respondAndClose(c net.Conn, code int, reason string) {
+	defer c.Close()
+	err := s.respond(c, code, reason)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (s *Server) respond(c net.Conn, code int, reason string) error {
+	s.base.Logger.Infof("%s %d %s", c.RemoteAddr(), code, reason)
+	responseText := strings.Join([]string{
+		fmt.Sprintf("HTTP/1.1 %d %s", code, reason),
+		"Server: Granblue Proxy 0.1-alpha",
+		"\r\n",
+	}, "\r\n")
+	return writeString(c, responseText)
 }
 
 func (t *tunnel) Pipe(src net.Conn, dest net.Conn, s *Server) {
 	defer func() {
 		src.Close()
 		if r := recover(); r != nil {
-			log.Println(r)
+			t.logger.Error(r)
 		}
 	}()
 	buffer := make([]byte, 65535)
@@ -179,36 +211,12 @@ func (t *tunnel) Pipe(src net.Conn, dest net.Conn, s *Server) {
 	t.established = false
 }
 
-func (t *tunnel) Established() bool {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	return t.established
-}
-
 func checkNetError(err error) bool {
 	_, ok := err.(*net.OpError)
 	if err != io.EOF && !ok {
 		return false
 	}
 	return true
-}
-
-func respondAndClose(c net.Conn, code int, reason string) {
-	defer c.Close()
-	err := respond(c, code, reason)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func respond(c net.Conn, code int, reason string) error {
-	log.Printf("%s %d %s", c.RemoteAddr(), code, reason)
-	responseText := strings.Join([]string{
-		fmt.Sprintf("HTTP/1.1 %d %s", code, reason),
-		"Server: Granblue Proxy 0.1-alpha",
-		"\r\n",
-	}, "\r\n")
-	return writeString(c, responseText)
 }
 
 func writeString(c net.Conn, responseText string) error {

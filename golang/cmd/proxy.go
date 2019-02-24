@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"log"
 
 	"github.com/Frizz925/gbf-proxy/golang/proxy"
 	"github.com/spf13/cobra"
@@ -33,7 +32,6 @@ var proxyCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("Proxy at %s -> Controller at %s", args[0], args[1])
 		s.WaitGroup().Wait()
 	},
 }

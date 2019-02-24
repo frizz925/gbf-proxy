@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
 )
 
 func WriteServerError(w http.ResponseWriter, code int, message string, err error) {
@@ -31,9 +33,9 @@ func ParseURL(req *http.Request) *url.URL {
 	return u
 }
 
-func LogRequest(name string, req *http.Request, message string) {
+func LogRequest(logger *logging.Logger, req *http.Request, message string) {
 	u := ParseURL(req)
-	log.Printf("[%s] %s %s %s - %s", name, req.RemoteAddr, req.Method, u.String(), message)
+	logger.Infof("%s %s %s - %s", req.RemoteAddr, req.Method, u.String(), message)
 }
 
 func AddrToHost(addr string) string {
