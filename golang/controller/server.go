@@ -74,7 +74,7 @@ func New(config *ServerConfig) lib.Server {
 
 func (s *Server) Open(addr string) (net.Listener, error) {
 	if s.CacheAvailable() {
-		s.logger.Infof("Controller at %s -> Cache service at %s", addr, s.config.CacheAddr)
+		s.logger.Infof("Controller service at %s -> Cache service at %s", addr, s.config.CacheAddr)
 	}
 	if s.WebAvailable() {
 		if s.config.WebHost == "" {
@@ -82,7 +82,7 @@ func (s *Server) Open(addr string) (net.Listener, error) {
 			s.logger.Infof("Web hostname not set. Using the default %s.", hostname)
 			s.config.WebHost = hostname
 		}
-		s.logger.Infof("Controller at %s -> Web server at %s", addr, s.config.WebAddr)
+		s.logger.Infof("Controller service at %s -> Web server at %s", addr, s.config.WebAddr)
 	}
 	return s.base.Open(addr, s.serve)
 }

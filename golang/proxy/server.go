@@ -40,7 +40,7 @@ func (s *Server) Name() string {
 }
 
 func (s *Server) Open(addr string) (net.Listener, error) {
-	s.base.Logger.Infof("Proxy at %s -> Controller at %s", addr, s.config.BackendAddr)
+	s.base.Logger.Infof("Proxy service at %s -> Controller service at %s", addr, s.config.BackendAddr)
 	return s.base.Open(addr, s.serve)
 }
 
