@@ -12,6 +12,12 @@ delete_configmap() {
     echo "Configmap deleted: ${CONFIGMAP_NAME}."
 }
 
+delete_secrets() {
+    echo "Deleting secrets..."
+    kubectl delete secret gbf-proxy || true
+    echo "Secrets deleted."
+}
+
 echo "Destroying application..."
 cd $DEPLOYMENTS_DIR
 bash $SCRIPTS_DIR/kube-delete.sh
@@ -20,3 +26,4 @@ echo "Application destroyed."
 
 delete_configmap redis
 delete_configmap nginx
+delete_secrets

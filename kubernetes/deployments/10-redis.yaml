@@ -23,13 +23,13 @@ spec:
         readinessProbe:
           exec:
             command: ["redis-cli", "ping"]
-          initialDelaySeconds: 15
-          timeoutSeconds: 5
+          initialDelaySeconds: 5
+          timeoutSeconds: 10
         livenessProbe:
           exec:
             command: ["redis-cli", "ping"]
-          initialDelaySeconds: 20
-          periodSeconds: 30
+          initialDelaySeconds: 5
+          periodSeconds: 15
         volumeMounts:
         - name: conf
           mountPath: /conf

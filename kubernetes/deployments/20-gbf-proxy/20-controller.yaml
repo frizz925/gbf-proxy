@@ -23,13 +23,13 @@ spec:
         imagePullPolicy: Never
         ports:
         - name: controller-port
-          containerPort: 8000
+          containerPort: 80
         command:
         - "gbf-proxy"
         - "controller"
-        - "0.0.0.0:8000"
+        - "0.0.0.0:80"
         - "--cache-address"
-        - "gbf-proxy-cache:8001"
+        - "gbf-proxy-cache:80"
         - "--web-address"
         - "gbf-proxy-web:80"
         - "--web-hostname"
@@ -40,17 +40,17 @@ spec:
             port: controller-port
             httpHeaders:
             - name: Host
-              value: game.granbluefantasy.jp
+              value: gbf-proxy.kogane.moe
           initialDelaySeconds: 5
-          periodSeconds: 5
+          periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /
             port: controller-port
             httpHeaders:
             - name: Host
-              value: game.granbluefantasy.jp
-          initialDelaySeconds: 30
+              value: gbf-proxy.kogane.moe
+          initialDelaySeconds: 15
           periodSeconds: 60
 ---
 apiVersion: v1
@@ -62,7 +62,7 @@ metadata:
     role: controller
 spec:
   ports:
-  - port: 8000
+  - port: 80
     targetPort: controller-port
   selector:
     app: gbf-proxy

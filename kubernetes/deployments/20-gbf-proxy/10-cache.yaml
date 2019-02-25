@@ -23,8 +23,8 @@ spec:
         imagePullPolicy: Never
         ports:
         - name: cache-port
-          containerPort: 8001
-        command: ["gbf-proxy", "cache", "0.0.0.0:8001", "-r", "redis:6379"]
+          containerPort: 80
+        command: ["gbf-proxy", "cache", "0.0.0.0:80", "-r", "redis:6379"]
         readinessProbe:
           httpGet:
             path: /ping
@@ -33,7 +33,7 @@ spec:
             - name: X-Granblue-Cache-API
               value: "1"
           initialDelaySeconds: 5
-          periodSeconds: 5
+          periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /ping
@@ -53,7 +53,7 @@ metadata:
     role: cache
 spec:
   ports:
-  - port: 8001
+  - port: 80
     targetPort: cache-port
   selector:
     app: gbf-proxy

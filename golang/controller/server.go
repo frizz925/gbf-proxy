@@ -2,13 +2,14 @@ package controller
 
 import (
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
 
 	"github.com/Frizz925/gbf-proxy/golang/cache"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
@@ -35,21 +36,25 @@ type Server struct {
 	cache          *http.Client
 	cacheAvailable bool
 	lock           *sync.Mutex
+	logger         *logging.Logger
 }
 
 func New(config *ServerConfig) lib.Server {
+	logger := logging.New(&logging.LoggerConfig{
+		Name: "Controller",
+	})
 	cacheClient := config.CacheClient
 	if cacheClient == nil {
 		cacheAddr := config.CacheAddr
 		if cacheAddr == "" {
-			log.Println("Cache address not set. Caching capability disabled.")
+			logger.Info("Cache address not set. Caching capability disabled.")
 		} else {
 			cacheClient = NewProxyClient(config.CacheAddr)
 		}
 	}
 	webAddr := config.WebAddr
 	if webAddr == "" {
-		log.Println("Web address not set. Static web capability disabled.")
+		logger.Info("Web address not set. Static web capability disabled.")
 	}
 	client := config.DefaultClient
 	if client == nil {
@@ -57,28 +62,33 @@ func New(config *ServerConfig) lib.Server {
 	}
 
 	return &Server{
-		base:           lib.NewBaseServer("Controller"),
+		base:           lib.NewBaseServer(logger.Name),
 		config:         config,
 		client:         client,
 		cache:          cacheClient,
 		cacheAvailable: cacheClient != nil,
 		lock:           &sync.Mutex{},
+		logger:         logger,
 	}
 }
 
 func (s *Server) Open(addr string) (net.Listener, error) {
 	if s.CacheAvailable() {
-		log.Printf("Controller at %s -> Cache service at %s", addr, s.config.CacheAddr)
+		s.logger.Infof("Controller service at %s -> Cache service at %s", addr, s.config.CacheAddr)
 	}
 	if s.WebAvailable() {
 		if s.config.WebHost == "" {
 			hostname := httpHelpers.AddrToHost(addr)
-			log.Printf("Web hostname not set. Using the default %s.", hostname)
+			s.logger.Infof("Web hostname not set. Using the default %s.", hostname)
 			s.config.WebHost = hostname
 		}
-		log.Printf("Controller at %s -> Web server at %s", addr, s.config.WebAddr)
+		s.logger.Infof("Controller service at %s -> Web server at %s", addr, s.config.WebAddr)
 	}
 	return s.base.Open(addr, s.serve)
+}
+
+func (s *Server) Name() string {
+	return s.base.Name
 }
 
 func (s *Server) Close() error {
@@ -116,18 +126,18 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 
 	c := s.client
 	if s.WebAvailable() && hostname == s.config.WebHost {
-		httpHelpers.LogRequest(s.base.Name, req, "Static web access")
+		httpHelpers.LogRequest(s.logger, req, "Static web access")
 		u.Host = s.config.WebAddr
 	} else if strings.HasSuffix(hostname, ".granbluefantasy.jp") {
 		// Hostname starting with 'game-a' usually meant for loading asset files
 		if s.CacheAvailable() && strings.HasPrefix(hostname, "game-a") {
 			c = s.cache
-			httpHelpers.LogRequest(s.base.Name, req, "Cache access")
+			httpHelpers.LogRequest(s.logger, req, "Cache access")
 		} else {
-			httpHelpers.LogRequest(s.base.Name, req, "Proxy access")
+			httpHelpers.LogRequest(s.logger, req, "Proxy access")
 		}
 	} else {
-		httpHelpers.LogRequest(s.base.Name, req, "Forbidden host")
+		httpHelpers.LogRequest(s.logger, req, "Forbidden host")
 		httpHelpers.WriteError(w, 403, "Host not allowed")
 		return
 	}
@@ -215,20 +225,20 @@ func (s *Server) startCacheHeartbeat() {
 func (s *Server) checkCacheHeartbeat(req *http.Request) bool {
 	res, err := s.cache.Do(req)
 	if err != nil {
-		log.Printf("Cache Heartbeat: Got error '%s'", err)
+		s.logger.Infof("Cache Heartbeat: Got error '%s'", err)
 		return false
 	}
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Printf("Cache Heartbeat: Got error while reading response '%s'", err)
+		s.logger.Infof("Cache Heartbeat: Got error while reading response '%s'", err)
 		return false
 	}
 	text := strings.TrimSpace(string(b))
 	if text != "OK" {
-		log.Printf("Cache Heartbeat: Expecting response 'OK', got '%s'", text)
+		s.logger.Infof("Cache Heartbeat: Expecting response 'OK', got '%s'", text)
 		return false
 	}
-	log.Printf("Cache Heartbeat: %s", text)
+	s.logger.Infof("Cache Heartbeat: %s", text)
 	return true
 }
 
