@@ -48,3 +48,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/jinzhu/copier"
+
+[[constraint]]
+  name = "github.com/gorilla/websocket"
+  version = "1.4.0"
