@@ -53,42 +53,43 @@ func (l *Logger) Debugf(format string, a ...interface{}) {
 	l.Debug(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Debug(message interface{}) {
-	l.Log("debug", message)
+func (l *Logger) Debug(a ...interface{}) {
+	l.Log("debug", a...)
 }
 
 func (l *Logger) Infof(format string, a ...interface{}) {
 	l.Info(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Info(message interface{}) {
-	l.Log("info", message)
+func (l *Logger) Info(a ...interface{}) {
+	l.Log("info", a...)
 }
 
 func (l *Logger) Warnf(format string, a ...interface{}) {
 	l.Warn(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Warn(message interface{}) {
-	l.LogErr("warn", message)
+func (l *Logger) Warn(a ...interface{}) {
+	l.LogErr("warn", a...)
 }
 
 func (l *Logger) Errorf(format string, a ...interface{}) {
 	l.Error(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Error(message interface{}) {
-	l.LogErr("error", message)
+func (l *Logger) Error(a ...interface{}) {
+	l.LogErr("error", a...)
 }
 
-func (l *Logger) Log(level string, message interface{}) {
-	l.Logger.Println(l.Format(level, message))
+func (l *Logger) Log(level string, a ...interface{}) {
+	l.Logger.Println(l.Format(level, a...))
 }
 
-func (l *Logger) LogErr(level string, message interface{}) {
-	l.ErrLogger.Println(l.Format(level, message))
+func (l *Logger) LogErr(level string, a ...interface{}) {
+	l.ErrLogger.Println(l.Format(level, a...))
 }
 
-func (l *Logger) Format(level string, message interface{}) string {
+func (l *Logger) Format(level string, a ...interface{}) string {
+	message := fmt.Sprint(a...)
 	return fmt.Sprintf("[%s] [%s] %s", l.Name, level, message)
 }
