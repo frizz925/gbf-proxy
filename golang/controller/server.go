@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/vmihailenco/msgpack"
 
 	"github.com/gorilla/websocket"
 
@@ -250,11 +251,20 @@ func (s *Server) WriteToWebSocket(ws *websocket.Conn, res *http.Response) error 
 }
 
 func (s *Server) UnmarshalRequest(data []byte) (*http.Request, error) {
-	return nil, errors.New("Not implemented yet")
+	var req *httpHelpers.Request
+	err := msgpack.Unmarshal(data, &req)
+	if err != nil {
+		return nil, err
+	}
+	return httpHelpers.UnserializeRequest(req)
 }
 
-func (s *Server) MarshalResponse(res *http.Response) ([]byte, error) {
-	return nil, errors.New("Not implemented yet")
+func (s *Server) MarshalResponse(r *http.Response) ([]byte, error) {
+	res, err := httpHelpers.SerializeResponse(r)
+	if err != nil {
+		return nil, err
+	}
+	return msgpack.Marshal(res)
 }
 
 func (s *Server) ForwardRequest(req *http.Request) (*http.Response, error) {

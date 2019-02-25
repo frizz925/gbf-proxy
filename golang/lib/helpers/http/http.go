@@ -65,6 +65,32 @@ func SerializeRequest(req *http.Request) (*Request, error) {
 	}, nil
 }
 
+func SerializeResponse(res *http.Response) (*Response, error) {
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	return &Response{
+		Base: Base{
+			Header:        res.Header,
+			ContentLength: res.ContentLength,
+			Body:          body,
+		},
+		Status:     res.Status,
+		StatusCode: res.StatusCode,
+	}, nil
+}
+
+func UnserializeRequest(req *Request) (*http.Request, error) {
+	return &http.Request{
+		Method:        req.Method,
+		URL:           &req.URL,
+		Header:        req.Base.Header,
+		ContentLength: req.Base.ContentLength,
+		Body:          NewBodyReader(req.Base.Body),
+	}, nil
+}
+
 func UnserializeResponse(res *Response) (*http.Response, error) {
 	return &http.Response{
 		Status:        res.Status,
