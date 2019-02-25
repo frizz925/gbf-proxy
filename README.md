@@ -10,7 +10,10 @@
 Granblue caching proxy for in-game assets written in Golang and aimed to be blazingly fast!
 
 ## How to Use
-The proxy is available on *gbf-proxy.kogane.moe* at ports 80, 443, and 8088. The server is hosted on Amazon Web Services EC2 in Singapore region. If you're located in SEA, this may still be useful for you. Otherwise, you're out of luck.
+The proxy is available on *gbf-proxy.kogane.moe* with the following ports:
+- 80: HTTP proxy port (insecure, **not recommended**)
+- 443: HTTPS proxy port (secure, recommended)
+- 8088: Alternative HTTP proxy port
 
 Although this is basically a public web proxy, it can only proxy your web traffic into **.granbluefantasy.jp** domains so make sure you set up your proxy rules properly, otherwise you'll get 403 Forbidden responses!
 
