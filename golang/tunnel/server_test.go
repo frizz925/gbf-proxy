@@ -1,20 +1,28 @@
 package tunnel
 
 import (
-	"net"
 	"net/http"
 	"net/url"
 	"testing"
 
 	"github.com/Frizz925/gbf-proxy/golang/controller"
+	"github.com/Frizz925/gbf-proxy/golang/lib"
 	"github.com/PuerkitoBio/goquery"
 )
 
 func TestTunnel(t *testing.T) {
-	l, err := prepareServices()
+	s, err := prepareServices()
 	if err != nil {
 		t.Fatal(err)
 	}
+	l, err := s.Open("localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		s.Close()
+		s.WaitGroup().Wait()
+	}()
 
 	proxyURL := &url.URL{
 		Scheme: "http",
@@ -39,7 +47,7 @@ func TestTunnel(t *testing.T) {
 	}
 }
 
-func prepareServices() (net.Listener, error) {
+func prepareServices() (lib.Server, error) {
 	c := controller.New(&controller.ServerConfig{})
 	l, err := c.Open("localhost:0")
 	if err != nil {
@@ -51,5 +59,5 @@ func prepareServices() (net.Listener, error) {
 			Host:   l.Addr().String(),
 		},
 	})
-	return s.Open("localhost:0")
+	return s, nil
 }
