@@ -8,9 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
-
 	"github.com/Frizz925/gbf-proxy/golang/lib"
+	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
 )
 
 type ServerConfig struct {

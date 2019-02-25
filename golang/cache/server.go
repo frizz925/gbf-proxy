@@ -117,7 +117,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			err := r.(error)
-			httpHelpers.WriteServerError(w, 503, "Internal server error", err)
+			httpHelpers.WriteServerError(s.base.Logger, w, 503, "Internal server error", err)
 		}
 	}()
 	s.ServeHTTPUnsafe(w, req)
@@ -135,7 +135,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	u := httpHelpers.ParseURL(req)
 	if u.Host == "" {
 		httpHelpers.LogRequest(s.base.Logger, req, "Missing host")
-		httpHelpers.WriteError(w, 400, "Missing host")
+		httpHelpers.WriteError(s.base.Logger, w, 400, "Missing host")
 		return
 	}
 
@@ -244,7 +244,6 @@ func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 }
 
 func (s *Server) ShouldCache(req *http.Request, res *http.Response) bool {
-	// TODO: Add logic on which request or response we should cache
 	code := res.StatusCode
 	return code == 200
 }
