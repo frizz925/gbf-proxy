@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -56,12 +55,13 @@ type CacheReader struct {
 }
 
 func New(config *ServerConfig) lib.Server {
+	base := lib.NewBaseServer("Cache")
 	internalCache := cache.New(DefaultExpirationTime, CleanUpIntervalTime)
 	redisClient := config.Redis
 	if redisClient == nil {
 		redisAddr := config.RedisAddr
 		if redisAddr == "" {
-			log.Printf("Redis address not set. Falling back to built-in in-memory caching.")
+			base.Logger.Infof("Redis address not set. Falling back to built-in in-memory caching.")
 		} else {
 			redisClient = redis.NewClient(&redis.Options{
 				Addr:     redisAddr,
@@ -76,7 +76,7 @@ func New(config *ServerConfig) lib.Server {
 	}
 
 	return &Server{
-		base:           lib.NewBaseServer("Cache"),
+		base:           base,
 		config:         config,
 		client:         client,
 		cache:          internalCache,
@@ -86,9 +86,13 @@ func New(config *ServerConfig) lib.Server {
 	}
 }
 
+func (s *Server) Name() string {
+	return s.base.Name
+}
+
 func (s *Server) Open(addr string) (net.Listener, error) {
 	if s.RedisAvailable() {
-		log.Printf("Cache at %s -> Redis server at %s", addr, s.config.RedisAddr)
+		s.base.Logger.Infof("Cache at %s -> Redis server at %s", addr, s.config.RedisAddr)
 	}
 	return s.base.Open(addr, s.serve)
 }
@@ -113,7 +117,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
 			err := r.(error)
-			httpHelpers.WriteServerError(w, 503, "Internal server error", err)
+			httpHelpers.WriteServerError(s.base.Logger, w, 503, "Internal server error", err)
 		}
 	}()
 	s.ServeHTTPUnsafe(w, req)
@@ -130,8 +134,8 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 
 	u := httpHelpers.ParseURL(req)
 	if u.Host == "" {
-		httpHelpers.LogRequest(s.base.Name, req, "Missing host")
-		httpHelpers.WriteError(w, 400, "Missing host")
+		httpHelpers.LogRequest(s.base.Logger, req, "Missing host")
+		httpHelpers.WriteError(s.base.Logger, w, 400, "Missing host")
 		return
 	}
 
@@ -155,12 +159,12 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 	if s.ShouldCache(req, res) {
-		s.CacheAsync(req, res, body, logError)
+		s.CacheAsync(req, res, body, s.logError)
 	}
 }
 
 func (s *Server) ServeAsAPI(w http.ResponseWriter, req *http.Request) {
-	httpHelpers.LogRequest(s.base.Name, req, "API access")
+	httpHelpers.LogRequest(s.base.Logger, req, "API access")
 	w.WriteHeader(200)
 	_, err := w.Write([]byte("OK"))
 	if err != nil && err != io.EOF {
@@ -170,10 +174,10 @@ func (s *Server) ServeAsAPI(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) Fetch(req *http.Request) (*http.Response, error) {
 	if s.HasCache(req) {
-		httpHelpers.LogRequest(s.base.Name, req, "Cache access")
+		httpHelpers.LogRequest(s.base.Logger, req, "Cache access")
 		return s.FetchFromCache(req)
 	}
-	httpHelpers.LogRequest(s.base.Name, req, "Proxy access")
+	httpHelpers.LogRequest(s.base.Logger, req, "Proxy access")
 	return s.FetchFromServer(req)
 }
 
@@ -240,9 +244,8 @@ func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 }
 
 func (s *Server) ShouldCache(req *http.Request, res *http.Response) bool {
-	// TODO: Add logic on which request or response we should cache
 	code := res.StatusCode
-	return code == 200
+	return !s.HasCache(req) && code == 200
 }
 
 func (s *Server) CacheAsync(req *http.Request, res *http.Response, body []byte, callback func(error)) {
@@ -302,16 +305,22 @@ func (s *Server) startRedisHeartbeat() {
 func (s *Server) checkRedisHeartbeat() bool {
 	val, err := s.redis.Ping().Result()
 	if err != nil {
-		log.Printf("Redis Heartbeat: Got error '%s'", err.Error())
+		s.base.Logger.Infof("Redis Heartbeat: Got error '%s'", err.Error())
 		return false
 	}
 	val = strings.TrimSpace(val)
 	if val != "PONG" {
-		log.Printf("Redis Heartbeat: Expected 'PONG' response, got '%s'", val)
+		s.base.Logger.Infof("Redis Heartbeat: Expected 'PONG' response, got '%s'", val)
 		return false
 	}
-	log.Printf("Redis Heartbeat: %s", val)
+	s.base.Logger.Infof("Redis Heartbeat: %s", val)
 	return true
+}
+
+func (s *Server) logError(err error) {
+	if err != nil {
+		s.base.Logger.Error(err)
+	}
 }
 
 func (c *CacheReader) Read(p []byte) (int, error) {
@@ -324,10 +333,4 @@ func (c *CacheReader) Close() error {
 
 func GetKeyForRequest(req *http.Request) string {
 	return req.URL.Path
-}
-
-func logError(err error) {
-	if err != nil {
-		log.Println(err)
-	}
 }

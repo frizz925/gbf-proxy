@@ -2,9 +2,10 @@ package lib
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"sync"
+
+	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
 )
 
 type Server interface {
@@ -13,10 +14,12 @@ type Server interface {
 	WaitGroup() *sync.WaitGroup
 	Listener() net.Listener
 	Running() bool
+	Name() string
 }
 
 type BaseServer struct {
 	Name      string
+	Logger    *logging.Logger
 	WaitGroup *sync.WaitGroup
 	Listener  net.Listener
 	running   bool
@@ -24,8 +27,12 @@ type BaseServer struct {
 }
 
 func NewBaseServer(name string) *BaseServer {
+	logger := logging.New(&logging.LoggerConfig{
+		Name: name,
+	})
 	s := &BaseServer{
 		Name:      name,
+		Logger:    logger,
 		WaitGroup: &sync.WaitGroup{},
 		running:   false,
 		lock:      &sync.Mutex{},
@@ -45,7 +52,7 @@ func (s *BaseServer) Open(addr string, callback func(net.Listener)) (net.Listene
 	s.Listener = l
 	s.WaitGroup.Add(1)
 	go s.serve(l, callback)
-	log.Printf("%s service listening at %s", s.Name, l.Addr().String())
+	s.Logger.Infof("%s service listening at %s", s.Name, l.Addr().String())
 	return l, nil
 }
 
