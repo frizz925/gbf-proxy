@@ -9,8 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Frizz925/gbf-proxy/golang/cmd"
-
+	"github.com/Frizz925/gbf-proxy/golang/consts"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 )
 
@@ -207,7 +206,7 @@ func respond(c net.Conn, code int, reason string) error {
 	log.Printf("%s %d %s", c.RemoteAddr(), code, reason)
 	responseText := strings.Join([]string{
 		fmt.Sprintf("HTTP/1.1 %d %s", code, reason),
-		"Server: Granblue Proxy " + cmd.Version,
+		"Server: Granblue Proxy " + consts.Version,
 		"\r\n",
 	}, "\r\n")
 	return writeString(c, responseText)
