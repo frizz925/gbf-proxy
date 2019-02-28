@@ -42,27 +42,6 @@ type Server struct {
 	upgrader       *websocket.Upgrader
 }
 
-type RequestError struct {
-	base       error
-	StatusCode int
-	Message    string
-}
-
-func NewRequestError(code int, message string, err error) *RequestError {
-	return &RequestError{
-		base:       err,
-		StatusCode: code,
-		Message:    message,
-	}
-}
-
-func (e *RequestError) Error() string {
-	if e.base != nil {
-		return e.base.Error()
-	}
-	return fmt.Sprintf("%d: %s", e.StatusCode, e.Message)
-}
-
 func New(config *ServerConfig) lib.Server {
 	base := lib.NewBaseServer("Controller")
 	cacheClient := config.CacheClient
@@ -285,7 +264,7 @@ func (s *Server) ForwardRequest(req *http.Request) (*http.Response, error) {
 		}
 	} else {
 		httpHelpers.LogRequest(s.base.Logger, req, "Forbidden host")
-		return nil, NewRequestError(403, "Host not allowed", nil)
+		return nil, httpHelpers.NewRequestError(403, "Host not allowed", nil)
 	}
 
 	clientReq := &http.Request{}
@@ -293,7 +272,7 @@ func (s *Server) ForwardRequest(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		panic(err)
 	}
-	clientReq.RequestURI = ""
+	clientReq.RequestURI = ""return
 	return c.Do(clientReq)
 }
 
