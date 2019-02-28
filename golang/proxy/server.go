@@ -10,6 +10,7 @@ import (
 
 	"github.com/Frizz925/gbf-proxy/golang/consts"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
+	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
 	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
 )
 
@@ -70,27 +71,29 @@ func (s *Server) serve(l net.Listener) {
 			}
 			break
 		}
-		go s.handleSafe(c)
+		go s.handle(c)
 	}
 }
 
-func (s *Server) handleSafe(conn net.Conn) {
-	defer func() {
-		if r := recover(); r != nil {
-			s.base.Logger.Error(r)
+func (s *Server) handle(conn net.Conn) {
+	err := s.handleUnsafe(conn)
+	if err != nil {
+		reqErr, ok := err.(*httpHelpers.RequestError)
+		if ok {
+			s.respondAndClose(conn, reqErr.StatusCode, reqErr.Message)
 		}
-	}()
-	s.handle(conn)
+		s.base.Logger.Error(err)
+	}
 }
 
-func (s *Server) handle(conn net.Conn) {
+func (s *Server) handleUnsafe(conn net.Conn) error {
 	builder := &strings.Builder{}
 	buffer := make([]byte, 65535)
 	for s.Running() {
 		read, err := conn.Read(buffer)
 		if err != nil {
 			if !checkNetError(err) {
-				panic(err)
+				return err
 			}
 			break
 		}
@@ -104,15 +107,15 @@ func (s *Server) handle(conn net.Conn) {
 	payload := builder.String()
 	sepIdx := strings.Index(payload, "\r\n\r\n")
 	if sepIdx <= 0 {
-		s.respondAndClose(conn, 400, "Bad Request")
-		return
+		s.base.Logger.Error("Payload doesn't have header/body delimiter")
+		return httpHelpers.NewRequestError(400, "Bad Request", nil)
 	}
 
 	header := strings.TrimSpace(payload[:sepIdx])
 	lines := strings.Split(header, "\r\n")
 	if len(lines) < 2 {
-		s.respondAndClose(conn, 400, "Bad Request")
-		return
+		s.base.Logger.Error("Payload doesn't have headers")
+		return httpHelpers.NewRequestError(400, "Bad Request", nil)
 	}
 
 	requestLine := lines[0]
@@ -122,8 +125,8 @@ func (s *Server) handle(conn net.Conn) {
 	for _, line := range lines[1:] {
 		idx := strings.Index(line, ": ")
 		if idx <= 0 {
-			s.respondAndClose(conn, 400, "Bad Request")
-			return
+			s.base.Logger.Error("Payload has deformed headers")
+			return httpHelpers.NewRequestError(400, "Bad Request", nil)
 		}
 		name := line[:idx]
 		value := line[idx+2:]
@@ -132,20 +135,20 @@ func (s *Server) handle(conn net.Conn) {
 
 	peer, err := net.Dial("tcp", s.config.BackendAddr)
 	if err != nil {
-		s.respondAndClose(conn, 502, "Bad Gateway")
-		return
+		s.base.Logger.Error("Unable to contact the backend server")
+		return httpHelpers.NewRequestError(502, "Bad Gateway", nil)
 	}
 
 	method := strings.Split(requestLine, " ")[0]
 	if method == "CONNECT" {
 		err := s.respond(conn, 200, "Connection Established")
 		if err != nil {
-			panic(err)
+			return err
 		}
 	} else {
 		err := writeString(peer, payload)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -154,8 +157,13 @@ func (s *Server) handle(conn net.Conn) {
 		lock:        &sync.Mutex{},
 		logger:      s.base.Logger,
 	}
-	go t.Pipe(peer, conn, s)
-	t.Pipe(conn, peer, s)
+	go func() {
+		err := t.Pipe(peer, conn, s)
+		if err != nil {
+			s.base.Logger.Error(err)
+		}
+	}()
+	return t.Pipe(conn, peer, s)
 }
 
 func (t *tunnel) Established() bool {
@@ -182,26 +190,20 @@ func (s *Server) respond(c net.Conn, code int, reason string) error {
 	return writeString(c, responseText)
 }
 
-func (t *tunnel) Pipe(src net.Conn, dest net.Conn, s *Server) {
-	defer func() {
-		src.Close()
-		if r := recover(); r != nil {
-			t.logger.Error(r)
-		}
-	}()
+func (t *tunnel) Pipe(src net.Conn, dest net.Conn, s *Server) error {
 	buffer := make([]byte, 65535)
 	for s.Running() && t.Established() {
 		read, err := src.Read(buffer)
 		if err != nil {
 			if !checkNetError(err) {
-				panic(err)
+				return err
 			}
 			break
 		}
 		err = write(dest, buffer[:read])
 		if err != nil {
 			if !checkNetError(err) {
-				panic(err)
+				return err
 			}
 			break
 		}
@@ -209,6 +211,7 @@ func (t *tunnel) Pipe(src net.Conn, dest net.Conn, s *Server) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.established = false
+	return nil
 }
 
 func checkNetError(err error) bool {

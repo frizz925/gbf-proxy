@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -109,47 +108,44 @@ func (s *Server) Running() bool {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	defer func() {
-		if r := recover(); r != nil {
-			err := r.(error)
-			code := 503
-			message := "Internal server error"
-			if reqErr, ok := r.(*RequestError); ok {
-				code = reqErr.StatusCode
-				message = reqErr.Message
-			}
-			httpHelpers.WriteServerError(s.base.Logger, w, code, message, err)
-		}
-		req.Body.Close()
-	}()
-	s.ServeHTTPUnsafe(w, req)
+	err := s.ServeHTTPUnsafe(w, req)
+	if err == nil {
+		return
+	}
+
+	code := 503
+	message := "Internal server error"
+	if reqErr, ok := err.(*httpHelpers.RequestError); ok {
+		code = reqErr.StatusCode
+		message = reqErr.Message
+	}
+	httpHelpers.WriteServerError(s.base.Logger, w, code, message, err)
 }
 
-func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
+func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error {
 	upgrade := req.Header.Get("Upgrade")
 	if upgrade == "websocket" {
 		ws, err := s.upgrader.Upgrade(w, req, nil)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		s.ServeWebSocket(ws)
-		return
+		return nil
 	}
 	defer req.Body.Close()
 
 	res, err := s.ForwardRequest(req)
 	if err != nil {
-		if _, ok := err.(*RequestError); ok {
-			panic(err)
+		if _, ok := err.(*httpHelpers.RequestError); ok {
+			return err
 		}
-		httpHelpers.WriteServerError(s.base.Logger, w, 502, "Bad gateway", err)
-		return
+		return httpHelpers.NewRequestError(502, "Bad gateway", err)
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	for k, values := range res.Header {
@@ -163,54 +159,52 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	for sent := 0; sent < length; {
 		written, err := w.Write(body[sent:])
 		if err != nil {
-			panic(err)
+			return err
 		}
 		sent += written
 	}
+	return nil
 }
 
 func (s *Server) ServeWebSocket(ws *websocket.Conn) {
-	defer func() {
-		r := recover()
-		if r == nil {
-			return
-		}
-		err := r.(error)
+	err := s.ServeWebSocketUnsafe(ws)
+	if err == nil {
+		return
+	}
+	s.base.Logger.Error(err)
+
+	code := 503
+	message := "Internal server error"
+	if reqErr, ok := err.(*httpHelpers.RequestError); ok {
+		code = reqErr.StatusCode
+		message = reqErr.Message
+	}
+
+	body := []byte(message)
+	err = s.WriteToWebSocket(ws, &http.Response{
+		StatusCode: code,
+		Body:       httpHelpers.NewBodyReader(body),
+	})
+	if err != nil {
 		s.base.Logger.Error(err)
-
-		code := 503
-		message := "Internal server error"
-		if reqErr, ok := r.(*RequestError); ok {
-			code = reqErr.StatusCode
-			message = reqErr.Message
-		}
-
-		body := []byte(message)
-		err = s.WriteToWebSocket(ws, &http.Response{
-			StatusCode: code,
-			Body:       httpHelpers.NewBodyReader(body),
-		})
-		if err != nil {
-			s.base.Logger.Error(err)
-		}
-	}()
-	s.ServeWebSocketUnsafe(ws)
+	}
 }
 
-func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) {
+func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) error {
 	defer ws.Close()
 	req, err := s.ReadFromWebSocket(ws)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	res, err := s.ForwardRequest(req)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	err = s.WriteToWebSocket(ws, res)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func (s *Server) ReadFromWebSocket(ws *websocket.Conn) (*http.Request, error) {
@@ -272,7 +266,7 @@ func (s *Server) ForwardRequest(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		panic(err)
 	}
-	clientReq.RequestURI = ""return
+	clientReq.RequestURI = ""
 	return c.Do(clientReq)
 }
 

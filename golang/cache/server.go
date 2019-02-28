@@ -114,39 +114,34 @@ func (s *Server) Running() bool {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	defer func() {
-		if r := recover(); r != nil {
-			err := r.(error)
-			httpHelpers.WriteServerError(s.base.Logger, w, 503, "Internal server error", err)
-		}
-	}()
-	s.ServeHTTPUnsafe(w, req)
+	err := s.ServeHTTPUnsafe(w, req)
+	if err != nil {
+		httpHelpers.WriteServerError(s.base.Logger, w, 503, "Internal server error", err)
+	}
 }
 
-func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
+func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error {
 	defer req.Body.Close()
 
 	apiSwitch := req.Header.Get(CacheAPIHeaderName)
 	if apiSwitch == "1" {
-		s.ServeAsAPI(w, req)
-		return
+		return s.ServeAsAPI(w, req)
 	}
 
 	u := httpHelpers.ParseURL(req)
 	if u.Host == "" {
 		httpHelpers.LogRequest(s.base.Logger, req, "Missing host")
-		httpHelpers.WriteError(s.base.Logger, w, 400, "Missing host")
-		return
+		return httpHelpers.NewRequestError(400, "Missing host", nil)
 	}
 
 	res, err := s.Fetch(req)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	for key, values := range res.Header {
 		for _, value := range values {
@@ -156,24 +151,32 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(res.StatusCode)
 	_, err = w.Write(body)
 	if err != nil && err != io.EOF {
-		panic(err)
+		return err
 	}
-	if s.ShouldCache(req, res) {
+	shouldCache, err := s.ShouldCache(req, res)
+	if err != nil {
+		return err
+	} else if shouldCache {
 		s.CacheAsync(req, res, body, s.logError)
 	}
+	return nil
 }
 
-func (s *Server) ServeAsAPI(w http.ResponseWriter, req *http.Request) {
+func (s *Server) ServeAsAPI(w http.ResponseWriter, req *http.Request) error {
 	httpHelpers.LogRequest(s.base.Logger, req, "API access")
 	w.WriteHeader(200)
 	_, err := w.Write([]byte("OK"))
 	if err != nil && err != io.EOF {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func (s *Server) Fetch(req *http.Request) (*http.Response, error) {
-	if s.HasCache(req) {
+	found, err := s.HasCache(req)
+	if err != nil {
+		return nil, err
+	} else if found {
 		httpHelpers.LogRequest(s.base.Logger, req, "Cache access")
 		return s.FetchFromCache(req)
 	}
@@ -181,17 +184,17 @@ func (s *Server) Fetch(req *http.Request) (*http.Response, error) {
 	return s.FetchFromServer(req)
 }
 
-func (s *Server) HasCache(req *http.Request) bool {
+func (s *Server) HasCache(req *http.Request) (bool, error) {
 	key := GetKeyForRequest(req)
 	if s.RedisAvailable() {
 		val, err := s.redis.Exists(key).Result()
 		if err != nil {
-			panic(err)
+			return false, err
 		}
-		return val == 1
+		return val == 1, nil
 	} else {
 		_, found := s.cache.Get(key)
-		return found
+		return found, nil
 	}
 }
 
@@ -243,9 +246,13 @@ func (s *Server) FetchFromServer(req *http.Request) (*http.Response, error) {
 	})
 }
 
-func (s *Server) ShouldCache(req *http.Request, res *http.Response) bool {
+func (s *Server) ShouldCache(req *http.Request, res *http.Response) (bool, error) {
 	code := res.StatusCode
-	return !s.HasCache(req) && code == 200
+	found, err := s.HasCache(req)
+	if err != nil {
+		return false, err
+	}
+	return !found && code == 200, nil
 }
 
 func (s *Server) CacheAsync(req *http.Request, res *http.Response, body []byte, callback func(error)) {
