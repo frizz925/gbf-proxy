@@ -16,10 +16,16 @@ import (
 	"github.com/Frizz925/gbf-proxy/golang/local"
 )
 
+type PendingRequest struct {
+}
+
+type PendingRequestMap map[string]PendingRequest
+
 type TunnelTransport struct {
-	URL    *url.URL
-	Conn   *websocket.Conn
-	Logger *logging.Logger
+	URL             *url.URL
+	Conn            *websocket.Conn
+	Logger          *logging.Logger
+	PendingRequests PendingRequestMap
 }
 
 type Server struct {
@@ -30,6 +36,16 @@ type Server struct {
 
 type ServerConfig struct {
 	TunnelURL *url.URL
+}
+
+func NewTunnelTransport(u *url.URL) *TunnelTransport {
+	return &TunnelTransport{
+		URL: u,
+		Logger: logging.New(&logging.LoggerConfig{
+			Name: "Tunnel",
+		}),
+		PendingRequests: make(PendingRequestMap),
+	}
 }
 
 func (t *TunnelTransport) Init() error {
@@ -45,6 +61,10 @@ func (t *TunnelTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.Conn == nil {
 		return nil, errors.New("Tunnel is not initialized yet")
 	}
+	return t.SendRequest(req)
+}
+
+func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error) {
 	data, err := t.MarshalRequest(req)
 	if err != nil {
 		return nil, err
@@ -53,11 +73,7 @@ func (t *TunnelTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, data, err = t.Conn.ReadMessage()
-	if err != nil {
-		return nil, err
-	}
-	return t.UnmarshalResponse(data)
+	return nil, nil
 }
 
 func (t *TunnelTransport) MarshalRequest(req *http.Request) ([]byte, error) {
@@ -80,9 +96,6 @@ func (t *TunnelTransport) UnmarshalResponse(data []byte) (*http.Response, error)
 func New(config *ServerConfig) lib.Server {
 	transport := &TunnelTransport{
 		URL: config.TunnelURL,
-		Logger: logging.New(&logging.LoggerConfig{
-			Name: "Tunnel",
-		}),
 	}
 	client := &http.Client{
 		Transport: transport,
