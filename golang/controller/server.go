@@ -16,12 +16,16 @@ import (
 	"github.com/Frizz925/gbf-proxy/golang/cache"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
+	wsHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/websocket"
 	"github.com/jinzhu/copier"
 )
 
 const (
 	DefaultHeartbeatTime = time.Minute
 )
+
+type IncomingRequest = wsHelpers.Request
+type OutgoingResponse = wsHelpers.Response
 
 type ServerConfig struct {
 	CacheAddr     string
@@ -129,7 +133,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 		if err != nil {
 			return err
 		}
-		s.ServeWebSocket(ws)
+		s.ListenWebSocket(ws)
 		return nil
 	}
 	defer req.Body.Close()
@@ -166,6 +170,13 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 	return nil
 }
 
+func (s *Server) ListenWebSocket(ws *websocket.Conn) {
+	defer ws.Close()
+	for s.Running() {
+		s.ServeWebSocket(ws)
+	}
+}
+
 func (s *Server) ServeWebSocket(ws *websocket.Conn) {
 	err := s.ServeWebSocketUnsafe(ws)
 	if err == nil {
@@ -191,8 +202,23 @@ func (s *Server) ServeWebSocket(ws *websocket.Conn) {
 }
 
 func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) error {
-	defer ws.Close()
-	req, err := s.ReadFromWebSocket(ws)
+	// Receive the incoming request
+	msgType, data, err := ws.ReadMessage()
+	if err != nil {
+		return err
+	}
+	if msgType != websocket.BinaryMessage {
+		s.base.Logger.Info(string(data))
+		return nil
+	}
+
+	// Unmarshal and forward the request
+	var ir IncomingRequest
+	err = msgpack.Unmarshal(data, &ir)
+	if err != nil {
+		return err
+	}
+	req, err := httpHelpers.UnserializeRequest(&ir.Payload)
 	if err != nil {
 		return err
 	}
@@ -200,11 +226,20 @@ func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) error {
 	if err != nil {
 		return err
 	}
-	err = s.WriteToWebSocket(ws, res)
+
+	// Marshal and return the response
+	r, err := httpHelpers.SerializeResponse(res)
 	if err != nil {
 		return err
 	}
-	return nil
+	data, err = msgpack.Marshal(OutgoingResponse{
+		ID:      ir.ID,
+		Payload: *r,
+	})
+	if err != nil {
+		return err
+	}
+	return ws.WriteMessage(websocket.BinaryMessage, data)
 }
 
 func (s *Server) ReadFromWebSocket(ws *websocket.Conn) (*http.Request, error) {
