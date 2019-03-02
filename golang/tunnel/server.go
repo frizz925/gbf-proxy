@@ -89,7 +89,7 @@ func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error)
 		},
 		WaitGroup: &sync.WaitGroup{},
 	}
-	t.PendingRequests[id] = p
+	t.AddPendingRequest(id, p)
 
 	data, err := msgpack.Marshal(*p.Request)
 	if err != nil {
@@ -108,6 +108,12 @@ func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error)
 	}
 	res := &p.Response.Payload
 	return httpHelpers.UnserializeResponse(res)
+}
+
+func (t *TunnelTransport) AddPendingRequest(id string, p *PendingRequest) {
+	defer t.Mutex.Unlock()
+	t.Mutex.Lock()
+	t.PendingRequests[id] = p
 }
 
 func (t *TunnelTransport) Send(data []byte) error {
