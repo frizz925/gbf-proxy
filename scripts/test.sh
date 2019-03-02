@@ -6,7 +6,7 @@ SCRIPT_PID=$$
 # Testing using golang
 cd "$(dirname $0)/../golang"
 echo "Running tests with coverage..."
-go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+make coverage
 echo "OK"
 
 # Testing using external tool
