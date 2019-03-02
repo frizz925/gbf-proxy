@@ -80,16 +80,22 @@ if [ -f $LOCAL_LOG_PATH ]; then
     rm $LOCAL_LOG_PATH
 fi
 
+LOCAL_PORT=38088
 printf "Spinning up local service... "
-run local > $LOCAL_LOG_PATH &
-LOCAL_PID=$!
-pkill -0 -P $LOCAL_PID > /dev/null 2>&1 || (echo "Local service fails to run!" >&2 && exit 1)
-while [ -z "$LOCAL_ADDRESS" ]; do
-    LOCAL_ADDRESS=$(cat $LOCAL_LOG_PATH | awk '{ print $NF }')
-    sleep 1
-done
-echo "Local service listening at $LOCAL_ADDRESS"
-PROXY_ADDRESS="$LOCAL_ADDRESS"
+run local -p $LOCAL_PORT &
+sleep 1
+echo "Local service listening at :$LOCAL_PORT"
+PROXY_ADDRESS="127.0.0.1:$LOCAL_PORT"
 
 printf "Testing local service... "
+request game.granbluefantasy.jp | grep -q "グランブルーファンタジー" && echo "OK" || (echo "FAIL!" && exit 1)
+
+TUNNEL_PORT=39000
+printf "Spinning up tunnel service... "
+run tunnel ws://localhost:$LOCAL_PORT -p $TUNNEL_PORT &
+sleep 1
+echo "Tunnel service listening at :$TUNNEL_PORT"
+PROXY_ADDRESS="127.0.0.1:$TUNNEL_PORT"
+
+printf "Testing tunnel service... "
 request game.granbluefantasy.jp | grep -q "グランブルーファンタジー" && echo "OK" || (echo "FAIL!" && exit 1)
