@@ -22,6 +22,8 @@ import (
 
 const (
 	DefaultHeartbeatTime = time.Minute
+	WritePeriod          = time.Second * 30
+	PingPeriod           = time.Second * 60
 )
 
 type IncomingRequest = wsHelpers.Request
@@ -174,6 +176,11 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 
 func (s *Server) ListenWebSocket(ws *websocket.Conn) {
 	defer ws.Close()
+
+	ws.SetPingHandler(wsHelpers.CreatePingHandler(ws, WritePeriod))
+	ws.SetPongHandler(wsHelpers.CreatePongHandler(ws, PingPeriod))
+	go wsHelpers.HandlePing(s.base.Logger, ws, PingPeriod, s.Running)
+
 	listening := true
 	for s.Running() && listening {
 		listening = s.ServeWebSocket(ws)

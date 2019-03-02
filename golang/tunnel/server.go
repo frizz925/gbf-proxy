@@ -20,6 +20,11 @@ import (
 	"github.com/Frizz925/gbf-proxy/golang/local"
 )
 
+const (
+	WritePeriod = time.Second * 30
+	PingPeriod  = time.Second * 60
+)
+
 type OutgoingRequest = wsHelpers.Request
 type IncomingResponse = wsHelpers.Response
 
@@ -61,6 +66,8 @@ func NewTunnelTransport(u *url.URL) *TunnelTransport {
 }
 
 func (t *TunnelTransport) Init() error {
+	defer t.Mutex.Unlock()
+	t.Mutex.Lock()
 	conn, _, err := websocket.DefaultDialer.Dial(t.URL.String(), nil)
 	if err != nil {
 		return err
@@ -115,6 +122,18 @@ func (t *TunnelTransport) AddPendingRequest(id string, p *PendingRequest) {
 	defer t.Mutex.Unlock()
 	t.Mutex.Lock()
 	t.PendingRequests[id] = p
+}
+
+func (t *TunnelTransport) GetPendingRequest(id string) *PendingRequest {
+	defer t.Mutex.Unlock()
+	t.Mutex.Lock()
+	return t.PendingRequests[id]
+}
+
+func (t *TunnelTransport) RemovePendingRequest(id string) {
+	defer t.Mutex.Unlock()
+	t.Mutex.Lock()
+	delete(t.PendingRequests, id)
 }
 
 func (t *TunnelTransport) Send(data []byte) error {
@@ -187,6 +206,11 @@ func (s *Server) Running() bool {
 func (s *Server) listenWebSocket() {
 	t := s.transport
 	defer t.Conn.Close()
+
+	t.Conn.SetPingHandler(wsHelpers.CreatePingHandler(t.Conn, WritePeriod))
+	t.Conn.SetPongHandler(wsHelpers.CreatePongHandler(t.Conn, PingPeriod))
+	go wsHelpers.HandlePing(t.Logger, t.Conn, PingPeriod, s.Running)
+
 	for s.Running() {
 		err := s.serveWebSocket()
 		if err != nil {
@@ -229,7 +253,7 @@ func (s *Server) serveWebSocket() error {
 	if err != nil {
 		return err
 	}
-	p := t.PendingRequests[r.ID]
+	p := t.GetPendingRequest(r.ID)
 	if p == nil {
 		return fmt.Errorf("Pending request for '%s' not found", r.ID)
 	}
