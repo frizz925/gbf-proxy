@@ -174,15 +174,19 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 
 func (s *Server) ListenWebSocket(ws *websocket.Conn) {
 	defer ws.Close()
-	for s.Running() {
-		s.ServeWebSocket(ws)
+	listening := true
+	for s.Running() && listening {
+		listening = s.ServeWebSocket(ws)
 	}
 }
 
-func (s *Server) ServeWebSocket(ws *websocket.Conn) {
+func (s *Server) ServeWebSocket(ws *websocket.Conn) bool {
 	err := s.ServeWebSocketUnsafe(ws)
 	if err == nil {
-		return
+		if _, ok := err.(*websocket.CloseError); ok {
+			return false
+		}
+		return true
 	}
 	s.base.Logger.Error(err)
 
@@ -201,6 +205,7 @@ func (s *Server) ServeWebSocket(ws *websocket.Conn) {
 	if err != nil {
 		s.base.Logger.Error(err)
 	}
+	return true
 }
 
 func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) error {

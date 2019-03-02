@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
@@ -189,9 +190,28 @@ func (s *Server) listenWebSocket() {
 	for s.Running() {
 		err := s.serveWebSocket()
 		if err != nil {
+			if _, ok := err.(*websocket.CloseError); ok {
+				break
+			}
 			t.Logger.Error(err)
 		}
 	}
+
+	if !s.Running() {
+		return
+	}
+
+	t.Logger.Error("WebSocket connection lost. Restoring...")
+	for {
+		time.Sleep(time.Second)
+		err := t.Init()
+		if err != nil {
+			t.Logger.Error(err)
+		} else {
+			break
+		}
+	}
+	t.Logger.Info("WebSocket connection restored.")
 }
 
 func (s *Server) serveWebSocket() error {
