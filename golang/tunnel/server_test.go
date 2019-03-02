@@ -3,6 +3,7 @@ package tunnel
 import (
 	"net/http"
 	"net/url"
+	"sync"
 	"testing"
 
 	"github.com/Frizz925/gbf-proxy/golang/controller"
@@ -33,6 +34,17 @@ func TestTunnel(t *testing.T) {
 			Proxy: http.ProxyURL(proxyURL),
 		},
 	}
+
+	// Test concurrency
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go concurrencyTest(t, wg, client)
+	}
+	wg.Wait()
+}
+
+func concurrencyTest(t *testing.T, wg *sync.WaitGroup, client *http.Client) {
 	res, err := client.Get("http://game.granbluefantasy.jp")
 	if err != nil {
 		t.Fatal(err)
@@ -45,6 +57,7 @@ func TestTunnel(t *testing.T) {
 	if title != "グランブルーファンタジー" {
 		t.Fatal("Invalid loaded page")
 	}
+	wg.Done()
 }
 
 func prepareServices() (lib.Server, error) {

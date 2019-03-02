@@ -43,6 +43,7 @@ type Server struct {
 	cacheAvailable bool
 	lock           *sync.Mutex
 	upgrader       *websocket.Upgrader
+	wsLock         *sync.Mutex
 }
 
 func New(config *ServerConfig) lib.Server {
@@ -73,6 +74,7 @@ func New(config *ServerConfig) lib.Server {
 		cacheAvailable: cacheClient != nil,
 		lock:           &sync.Mutex{},
 		upgrader:       &websocket.Upgrader{},
+		wsLock:         &sync.Mutex{},
 	}
 }
 
@@ -213,15 +215,28 @@ func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) error {
 	}
 
 	// Unmarshal and forward the request
-	var ir IncomingRequest
-	err = msgpack.Unmarshal(data, &ir)
+	var r IncomingRequest
+	err = msgpack.Unmarshal(data, &r)
 	if err != nil {
 		return err
 	}
-	req, err := httpHelpers.UnserializeRequest(&ir.Payload)
+	req, err := httpHelpers.UnserializeRequest(&r.Payload)
 	if err != nil {
 		return err
 	}
+
+	go s.handleWebSocketRequest(ws, r.ID, req)
+	return nil
+}
+
+func (s *Server) handleWebSocketRequest(ws *websocket.Conn, id string, req *http.Request) {
+	err := s.handleWebSocketRequestUnsafe(ws, id, req)
+	if err != nil {
+		s.base.Logger.Error(err)
+	}
+}
+
+func (s *Server) handleWebSocketRequestUnsafe(ws *websocket.Conn, id string, req *http.Request) error {
 	res, err := s.ForwardRequest(req)
 	if err != nil {
 		return err
@@ -232,13 +247,19 @@ func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) error {
 	if err != nil {
 		return err
 	}
-	data, err = msgpack.Marshal(OutgoingResponse{
-		ID:      ir.ID,
+	data, err := msgpack.Marshal(OutgoingResponse{
+		ID:      id,
 		Payload: *r,
 	})
 	if err != nil {
 		return err
 	}
+	return s.sendWebSocket(ws, data)
+}
+
+func (s *Server) sendWebSocket(ws *websocket.Conn, data []byte) error {
+	defer s.wsLock.Unlock()
+	s.wsLock.Lock()
 	return ws.WriteMessage(websocket.BinaryMessage, data)
 }
 

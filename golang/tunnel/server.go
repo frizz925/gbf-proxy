@@ -35,6 +35,7 @@ type TunnelTransport struct {
 	Conn            *websocket.Conn
 	Logger          *logging.Logger
 	PendingRequests PendingRequestMap
+	Mutex           *sync.Mutex
 }
 
 type Server struct {
@@ -54,6 +55,7 @@ func NewTunnelTransport(u *url.URL) *TunnelTransport {
 			Name: "Tunnel",
 		}),
 		PendingRequests: make(PendingRequestMap),
+		Mutex:           &sync.Mutex{},
 	}
 }
 
@@ -95,7 +97,7 @@ func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error)
 	}
 
 	p.WaitGroup.Add(1)
-	err = t.Conn.WriteMessage(websocket.BinaryMessage, data)
+	err = t.Send(data)
 	if err != nil {
 		return nil, err
 	}
@@ -106,6 +108,12 @@ func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error)
 	}
 	res := &p.Response.Payload
 	return httpHelpers.UnserializeResponse(res)
+}
+
+func (t *TunnelTransport) Send(data []byte) error {
+	defer t.Mutex.Unlock()
+	t.Mutex.Lock()
+	return t.Conn.WriteMessage(websocket.BinaryMessage, data)
 }
 
 func (t *TunnelTransport) MarshalRequest(req *http.Request) ([]byte, error) {
