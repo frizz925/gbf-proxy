@@ -21,6 +21,7 @@ type Server struct {
 	waitGroup *sync.WaitGroup
 	listener  net.Listener
 	servers   []lib.Server
+	lock      *sync.Mutex
 }
 
 type ServerConfig struct {
@@ -31,6 +32,7 @@ func New(config *ServerConfig) lib.Server {
 	return &Server{
 		Client:    config.HttpClient,
 		waitGroup: &sync.WaitGroup{},
+		lock:      &sync.Mutex{},
 	}
 }
 
@@ -39,6 +41,8 @@ func (s *Server) Name() string {
 }
 
 func (s *Server) Open(addr string) (net.Listener, error) {
+	defer s.lock.Unlock()
+	s.lock.Lock()
 	s.Cache = cache.New(&cache.ServerConfig{
 		HttpClient: s.Client,
 	})
@@ -94,10 +98,16 @@ func (s *Server) Listener() net.Listener {
 }
 
 func (s *Server) Running() bool {
-	for _, server := range s.servers {
+	for _, server := range s.GetServers() {
 		if !server.Running() {
 			return false
 		}
 	}
 	return true
+}
+
+func (s *Server) GetServers() []lib.Server {
+	defer s.lock.Unlock()
+	s.lock.Lock()
+	return s.servers
 }
