@@ -27,6 +27,7 @@
 
 # Coverage stuff
 coverage.*
+!coverage.sh
 
 # Debug stuff
 debug

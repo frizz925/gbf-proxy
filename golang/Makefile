@@ -27,7 +27,7 @@ build-windows:
 test:
 	$(GOTEST) -race ./...
 coverage:
-	$(GOTEST) -race -coverprofile=coverage.txt -covermode=atomic -coverpkg=./... ./...
+	sh scripts/coverage.sh
 clean:
 	$(GOCLEAN)
 	rm -f $(BUILD_DIR)/$(BINARY_NAME)-*
