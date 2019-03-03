@@ -169,6 +169,9 @@ func New(config *ServerConfig) lib.Server {
 	transport := NewMultiplexerTransport(config.MultiplexerURL)
 	client := &http.Client{
 		Transport: transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 	base := local.New(&local.ServerConfig{
 		HttpClient: client,
