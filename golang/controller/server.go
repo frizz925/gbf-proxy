@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -11,12 +12,11 @@ import (
 
 	"github.com/vmihailenco/msgpack"
 
-	"github.com/gorilla/websocket"
-
 	"github.com/Frizz925/gbf-proxy/golang/cache"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
 	wsHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/websocket"
+	"github.com/Frizz925/gbf-proxy/golang/lib/websocket"
 	"github.com/jinzhu/copier"
 )
 
@@ -24,6 +24,8 @@ const (
 	DefaultHeartbeatTime = time.Minute
 	WritePeriod          = time.Second * 30
 	PingPeriod           = time.Second * 60
+	ReadBufferSize       = 4096
+	WriteBufferSize      = 4096
 )
 
 type IncomingRequest = wsHelpers.Request
@@ -75,8 +77,12 @@ func New(config *ServerConfig) lib.Server {
 		cache:          cacheClient,
 		cacheAvailable: cacheClient != nil,
 		lock:           &sync.Mutex{},
-		upgrader:       &websocket.Upgrader{},
-		wsLock:         &sync.Mutex{},
+		upgrader: &websocket.Upgrader{
+			EnableCompression: true,
+			ReadBufferSize:    ReadBufferSize,
+			WriteBufferSize:   WriteBufferSize,
+		},
+		wsLock: &sync.Mutex{},
 	}
 }
 
@@ -137,6 +143,7 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 		if err != nil {
 			return err
 		}
+		httpHelpers.LogRequest(s.base.Logger, req, "Upgrading to WebSocket")
 		s.ListenWebSocket(ws)
 		return nil
 	}
@@ -151,11 +158,6 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-
 	for k, values := range res.Header {
 		for _, v := range values {
 			w.Header().Add(k, v)
@@ -163,13 +165,24 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 	}
 	w.WriteHeader(res.StatusCode)
 
-	length := len(body)
-	for sent := 0; sent < length; {
-		written, err := w.Write(body[sent:])
-		if err != nil {
+	buffer := make([]byte, 8192)
+	for finished := false; !finished; {
+		length, err := res.Body.Read(buffer)
+		if err == io.EOF {
+			finished = true
+		} else if err != nil {
 			return err
 		}
-		sent += written
+		for sent := 0; sent < length; {
+			written, err := w.Write(buffer[sent:length])
+			if err == io.EOF {
+				finished = true
+				break
+			} else if err != nil {
+				return err
+			}
+			sent += written
+		}
 	}
 	return nil
 }
@@ -177,53 +190,25 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 func (s *Server) ListenWebSocket(ws *websocket.Conn) {
 	defer ws.Close()
 
-	ws.SetPingHandler(wsHelpers.CreatePingHandler(ws, WritePeriod))
-	ws.SetPongHandler(wsHelpers.CreatePongHandler(ws, PingPeriod))
-	go wsHelpers.HandlePing(s.base.Logger, ws, PingPeriod, s.Running)
-
-	listening := true
-	for s.Running() && listening {
-		listening = s.ServeWebSocket(ws)
+	ctx := websocket.NewContext(ws)
+	for listening := true; listening && s.Running() && ctx.Connected(); {
+		listening = s.ServeWebSocket(ctx)
 	}
 }
 
-func (s *Server) ServeWebSocket(ws *websocket.Conn) bool {
-	err := s.ServeWebSocketUnsafe(ws)
-	if err == nil {
-		if _, ok := err.(*websocket.CloseError); ok {
-			return false
-		}
-		return true
-	}
-	s.base.Logger.Error(err)
-
-	code := 503
-	message := "Internal server error"
-	if reqErr, ok := err.(*httpHelpers.RequestError); ok {
-		code = reqErr.StatusCode
-		message = reqErr.Message
-	}
-
-	body := []byte(message)
-	err = s.WriteToWebSocket(ws, &http.Response{
-		StatusCode: code,
-		Body:       httpHelpers.NewBodyReader(body),
-	})
+func (s *Server) ServeWebSocket(ctx *websocket.Context) bool {
+	err := s.ServeWebSocketUnsafe(ctx)
 	if err != nil {
 		s.base.Logger.Error(err)
 	}
 	return true
 }
 
-func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) error {
+func (s *Server) ServeWebSocketUnsafe(ctx *websocket.Context) error {
 	// Receive the incoming request
-	msgType, data, err := ws.ReadMessage()
+	data, err := ctx.Read()
 	if err != nil {
 		return err
-	}
-	if msgType != websocket.BinaryMessage {
-		s.base.Logger.Info(string(data))
-		return nil
 	}
 
 	// Unmarshal and forward the request
@@ -237,18 +222,19 @@ func (s *Server) ServeWebSocketUnsafe(ws *websocket.Conn) error {
 		return err
 	}
 
-	go s.handleWebSocketRequest(ws, r.ID, req)
+	req.RemoteAddr = ctx.Conn.RemoteAddr().String()
+	go s.handleWebSocketRequest(ctx, r.ID, req)
 	return nil
 }
 
-func (s *Server) handleWebSocketRequest(ws *websocket.Conn, id string, req *http.Request) {
-	err := s.handleWebSocketRequestUnsafe(ws, id, req)
+func (s *Server) handleWebSocketRequest(ctx *websocket.Context, id string, req *http.Request) {
+	err := s.handleWebSocketRequestUnsafe(ctx, id, req)
 	if err != nil {
 		s.base.Logger.Error(err)
 	}
 }
 
-func (s *Server) handleWebSocketRequestUnsafe(ws *websocket.Conn, id string, req *http.Request) error {
+func (s *Server) handleWebSocketRequestUnsafe(ctx *websocket.Context, id string, req *http.Request) error {
 	res, err := s.ForwardRequest(req)
 	if err != nil {
 		return err
@@ -266,46 +252,7 @@ func (s *Server) handleWebSocketRequestUnsafe(ws *websocket.Conn, id string, req
 	if err != nil {
 		return err
 	}
-	return s.sendWebSocket(ws, data)
-}
-
-func (s *Server) sendWebSocket(ws *websocket.Conn, data []byte) error {
-	defer s.wsLock.Unlock()
-	s.wsLock.Lock()
-	return ws.WriteMessage(websocket.BinaryMessage, data)
-}
-
-func (s *Server) ReadFromWebSocket(ws *websocket.Conn) (*http.Request, error) {
-	_, data, err := ws.ReadMessage()
-	if err != nil {
-		return nil, err
-	}
-	return s.UnmarshalRequest(data)
-}
-
-func (s *Server) WriteToWebSocket(ws *websocket.Conn, res *http.Response) error {
-	data, err := s.MarshalResponse(res)
-	if err != nil {
-		return err
-	}
-	return ws.WriteMessage(websocket.BinaryMessage, data)
-}
-
-func (s *Server) UnmarshalRequest(data []byte) (*http.Request, error) {
-	var req *httpHelpers.Request
-	err := msgpack.Unmarshal(data, &req)
-	if err != nil {
-		return nil, err
-	}
-	return httpHelpers.UnserializeRequest(req)
-}
-
-func (s *Server) MarshalResponse(r *http.Response) ([]byte, error) {
-	res, err := httpHelpers.SerializeResponse(r)
-	if err != nil {
-		return nil, err
-	}
-	return msgpack.Marshal(res)
+	return ctx.Write(data)
 }
 
 func (s *Server) ForwardRequest(req *http.Request) (*http.Response, error) {

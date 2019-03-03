@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
 	"github.com/vmihailenco/msgpack"
 
@@ -17,6 +16,7 @@ import (
 	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
 	wsHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/websocket"
 	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
+	"github.com/Frizz925/gbf-proxy/golang/lib/websocket"
 	"github.com/Frizz925/gbf-proxy/golang/local"
 )
 
@@ -37,11 +37,10 @@ type PendingRequest struct {
 type PendingRequestMap map[string]*PendingRequest
 
 type TunnelTransport struct {
-	URL             *url.URL
-	Conn            *websocket.Conn
+	Controller      *websocket.Controller
 	Logger          *logging.Logger
 	PendingRequests PendingRequestMap
-	Mutex           *sync.Mutex
+	mutex           *sync.Mutex
 }
 
 type Server struct {
@@ -55,35 +54,36 @@ type ServerConfig struct {
 }
 
 func NewTunnelTransport(u *url.URL) *TunnelTransport {
+	logger := logging.New(&logging.LoggerConfig{
+		Name: "Tunnel",
+	})
 	return &TunnelTransport{
-		URL: u,
-		Logger: logging.New(&logging.LoggerConfig{
-			Name: "Tunnel",
+		Controller: websocket.NewController(&websocket.Config{
+			URL: u,
+			ErrorHandler: func(err error) {
+				logger.Error(err)
+			},
 		}),
+		Logger:          logger,
 		PendingRequests: make(PendingRequestMap),
-		Mutex:           &sync.Mutex{},
+		mutex:           &sync.Mutex{},
 	}
 }
 
 func (t *TunnelTransport) Init() error {
-	defer t.Mutex.Unlock()
-	t.Mutex.Lock()
-	conn, _, err := websocket.DefaultDialer.Dial(t.URL.String(), nil)
-	if err != nil {
-		return err
-	}
-	t.Conn = conn
-	return nil
+	return t.Controller.Connect()
 }
 
 func (t *TunnelTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.Conn == nil {
-		return nil, errors.New("Tunnel is not initialized yet")
-	}
 	return t.SendRequest(req)
 }
 
 func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error) {
+	err := t.Controller.CheckLiveness()
+	if err != nil {
+		return nil, err
+	}
+
 	r, err := httpHelpers.SerializeRequest(req)
 	if err != nil {
 		return nil, err
@@ -119,27 +119,33 @@ func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error)
 }
 
 func (t *TunnelTransport) AddPendingRequest(id string, p *PendingRequest) {
-	defer t.Mutex.Unlock()
-	t.Mutex.Lock()
+	defer t.mutex.Unlock()
+	t.mutex.Lock()
 	t.PendingRequests[id] = p
 }
 
 func (t *TunnelTransport) GetPendingRequest(id string) *PendingRequest {
-	defer t.Mutex.Unlock()
-	t.Mutex.Lock()
+	defer t.mutex.Unlock()
+	t.mutex.Lock()
 	return t.PendingRequests[id]
 }
 
 func (t *TunnelTransport) RemovePendingRequest(id string) {
-	defer t.Mutex.Unlock()
-	t.Mutex.Lock()
+	defer t.mutex.Unlock()
+	t.mutex.Lock()
 	delete(t.PendingRequests, id)
 }
 
+func (t *TunnelTransport) PopPendingRequest(id string) *PendingRequest {
+	p := t.GetPendingRequest(id)
+	if p != nil {
+		t.RemovePendingRequest(id)
+	}
+	return p
+}
+
 func (t *TunnelTransport) Send(data []byte) error {
-	defer t.Mutex.Unlock()
-	t.Mutex.Lock()
-	return t.Conn.WriteMessage(websocket.BinaryMessage, data)
+	return t.Controller.Write(data)
 }
 
 func (t *TunnelTransport) MarshalRequest(req *http.Request) ([]byte, error) {
@@ -205,16 +211,17 @@ func (s *Server) Running() bool {
 
 func (s *Server) listenWebSocket() {
 	t := s.transport
-	defer t.Conn.Close()
-
-	t.Conn.SetPingHandler(wsHelpers.CreatePingHandler(t.Conn, WritePeriod))
-	t.Conn.SetPongHandler(wsHelpers.CreatePongHandler(t.Conn, PingPeriod))
-	go wsHelpers.HandlePing(t.Logger, t.Conn, PingPeriod, s.Running)
 
 	for s.Running() {
 		err := s.serveWebSocket()
 		if err != nil {
-			if _, ok := err.(*websocket.CloseError); ok {
+			if err == websocket.NotConnectedError || err == websocket.UnhealthyError {
+				break
+			} else if err == websocket.NotInitializedError {
+				// This should NOT happen AT ALL. If it somehow gets here
+				// then there's invalid initialization logic going on here
+				panic(err)
+			} else if _, ok := err.(*websocket.CloseError); ok {
 				break
 			}
 			t.Logger.Error(err)
@@ -227,8 +234,15 @@ func (s *Server) listenWebSocket() {
 
 	t.Logger.Error("WebSocket connection lost. Restoring...")
 	for {
+		if t.Controller.Connected() {
+			err := t.Controller.Disconnect()
+			if err != nil {
+				// Just print the error for now
+				t.Logger.Error(err)
+			}
+		}
 		time.Sleep(time.Second)
-		err := t.Init()
+		err := t.Controller.Connect()
 		if err != nil {
 			t.Logger.Error(err)
 		} else {
@@ -236,24 +250,21 @@ func (s *Server) listenWebSocket() {
 		}
 	}
 	t.Logger.Info("WebSocket connection restored.")
+	go s.listenWebSocket()
 }
 
 func (s *Server) serveWebSocket() error {
 	t := s.transport
-	msgType, data, err := t.Conn.ReadMessage()
+	data, err := t.Controller.Read()
 	if err != nil {
 		return err
-	}
-	if msgType != websocket.BinaryMessage {
-		t.Logger.Info(string(data))
-		return nil
 	}
 	var r *IncomingResponse
 	err = msgpack.Unmarshal(data, &r)
 	if err != nil {
 		return err
 	}
-	p := t.GetPendingRequest(r.ID)
+	p := t.PopPendingRequest(r.ID)
 	if p == nil {
 		return fmt.Errorf("Pending request for '%s' not found", r.ID)
 	}
