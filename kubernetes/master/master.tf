@@ -28,7 +28,10 @@ resource "null_resource" "master" {
 
   provisioner "remote-exec" {
     inline = [
-      "export LOCAL_IFACE=${var.kube_iface}",
+      "export PATH=/opt/bin:$PATH",
+      "export PUBLIC_IFACE=${var.kube_public_iface}",
+      "export PRIVATE_IFACE=${var.kube_private_iface}",
+      "export KUBEADM_EXTRA_SANS=${var.kube_extra_sans}",
       "export KUBEADM_EXTRA_ARGS=--pod-network-cidr=${var.pod_network_cidr}",
       "export K8S_NETWORKING_ADDON=${var.network_addon}",
       "bash /tmp/setup.sh",

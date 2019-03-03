@@ -8,10 +8,10 @@ if [ $EUID -ne 0 ]; then
     exit $?
 fi
 
-if [ -z "$LOCAL_IFACE" ]; then
-    LOCAL_IFACE="eth1"
+if [ -z "$PRIVATE_IFACE" ]; then
+    PRIVATE_IFACE="eth1"
 fi
-echo "Using network interface: $LOCAL_IFACE"
+echo "Using network interface: ${PRIVATE_IFACE}"
 
 CNI_VERSION="v0.7.4"
 CRICTL_VERSION="v1.13.0"
@@ -27,12 +27,16 @@ K8S_RELEASE=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
 echo "Using Kubernetes version ${K8S_RELEASE}"
 
 echo "Getting private IP..."
-PRIVATE_IP=$(ip -f inet -o addr show $LOCAL_IFACE | head -n 1 | awk '{ print $4 }' | cut -d/ -f1)
+if [ -n "$COREOS_PRIVATE_IPV4" ]; then
+    PRIVATE_IP="$COREOS_PRIVATE_IPV4"
+else
+    PRIVATE_IP=$(ip -f inet -o addr show $PRIVATE_IFACE | head -n 1 | awk '{ print $4 }' | cut -d/ -f1)
+fi
 if [ -z "$PRIVATE_IP" ]; then
     echo "Can't determine the private IP address. Exiting!" >&2
     exit 1
 fi
-echo "Using private IP ${PRIVATE_IP}"
+echo "Using private IP: ${PRIVATE_IP}"
 
 check_service_active() {
     systemctl is-active "$1" --quiet

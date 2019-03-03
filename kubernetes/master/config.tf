@@ -16,8 +16,19 @@ variable "master_pvt_key" {
   default = "~/.ssh/id_rsa"
 }
 
-variable "kube_iface" {
-  type = ""
+variable "kube_public_iface" {
+  type = "string"
+  default = "eth0"
+}
+
+variable "kube_private_iface" {
+  type = "string"
+  default = "eth1"
+}
+
+variable "kube_extra_sans" {
+  type = "string"
+  default = ""
 }
 
 variable "pod_network_cidr" {
