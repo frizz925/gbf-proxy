@@ -68,7 +68,11 @@ func New(config *ServerConfig) lib.Server {
 	}
 	client := config.DefaultClient
 	if client == nil {
-		client = http.DefaultClient
+		client = &http.Client{
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
 	}
 
 	return &Server{
