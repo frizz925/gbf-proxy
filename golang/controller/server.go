@@ -14,6 +14,7 @@ import (
 
 	"github.com/Frizz925/gbf-proxy/golang/cache"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
+	"github.com/Frizz925/gbf-proxy/golang/lib/acl"
 	httpHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/http"
 	wsHelpers "github.com/Frizz925/gbf-proxy/golang/lib/helpers/websocket"
 	"github.com/Frizz925/gbf-proxy/golang/lib/websocket"
@@ -259,9 +260,9 @@ func (s *Server) ForwardRequest(req *http.Request) (*http.Response, error) {
 	if s.WebAvailable() && hostname == s.config.WebHost {
 		httpHelpers.LogRequest(s.base.Logger, req, "Static web access")
 		u.Host = s.config.WebAddr
-	} else if strings.HasSuffix(hostname, ".granbluefantasy.jp") {
+	} else if acl.IsGameDomain(hostname) {
 		// Hostname starting with 'game-a' usually meant for loading asset files
-		if s.CacheAvailable() && strings.HasPrefix(hostname, "game-a") {
+		if s.CacheAvailable() && acl.IsGameAssetsDomain(hostname) {
 			c = s.cache
 			httpHelpers.LogRequest(s.base.Logger, req, "Cache access")
 		} else {
