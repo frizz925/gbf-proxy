@@ -15,6 +15,12 @@ resource "null_resource" "master" {
     create_before_destroy = true
   }
 
+  # Workaround for non-triggering destroy
+  provisioner "file" {
+    content = "${element(var.worker_hosts, count.index)}"
+    destination = "/tmp/${element(var.worker_names, count.index)}"
+  }
+
   provisioner "file" {
     source = "../scripts/node-teardown.sh"
     destination = "/tmp/node-teardown.sh"
@@ -23,6 +29,7 @@ resource "null_resource" "master" {
 
   provisioner "remote-exec" {
     inline = [
+      "export PATH=/opt/bin:$PATH",
       "bash /tmp/node-teardown.sh ${element(var.worker_names, count.index)}"
     ]
     when = "destroy"
