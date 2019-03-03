@@ -92,12 +92,12 @@ PROXY_ADDRESS="127.0.0.1:$LOCAL_PORT"
 printf "Testing local service... "
 request game.granbluefantasy.jp | grep -q "グランブルーファンタジー" && echo "OK" || (echo "FAIL!" && exit 1)
 
-TUNNEL_PORT=39000
-printf "Spinning up tunnel service... "
-run tunnel ws://localhost:$LOCAL_PORT -p $TUNNEL_PORT &
+MULTIPLEXER_PORT=39000
+printf "Spinning up multiplexer service... "
+run multiplexer ws://localhost:$LOCAL_PORT -p $MULTIPLEXER_PORT &
 sleep 1
-echo "Tunnel service listening at :$TUNNEL_PORT"
-PROXY_ADDRESS="127.0.0.1:$TUNNEL_PORT"
+echo "Tunnel service listening at :$MULTIPLEXER_PORT"
+PROXY_ADDRESS="127.0.0.1:$MULTIPLEXER_PORT"
 
-printf "Testing tunnel service... "
+printf "Testing multiplexer service... "
 request game.granbluefantasy.jp | grep -q "グランブルーファンタジー" && echo "OK" || (echo "FAIL!" && exit 1)
