@@ -10,5 +10,5 @@ for d in ${DEPLOYMENTS[@]}; do
 done
 
 WEB_NAME=gbf-proxy-web
-kubectl set image depoyments/$WEB_NAME $WEB_NAME=$WEB_NAME:$IMAGE_TAG
+kubectl set image deployments/$WEB_NAME $WEB_NAME=$WEB_NAME:$IMAGE_TAG
 
