@@ -7,15 +7,15 @@ import (
 	"os"
 
 	"github.com/Frizz925/gbf-proxy/golang/lib/logging"
-	"github.com/Frizz925/gbf-proxy/golang/tunnel"
+	"github.com/Frizz925/gbf-proxy/golang/multiplexer"
 	"github.com/spf13/cobra"
 )
 
-var tunnelCmd = &cobra.Command{
-	Use:   "tunnel <endpoint-url>",
-	Short: "Start the local Granblue Proxy services with tunneling",
+var multiplexerCmd = &cobra.Command{
+	Use:   "multiplexer <endpoint-url>",
+	Short: "Start the local Granblue Proxy services with multiplexing",
 	Long: `Arguments:
-  endpoint-url  WebSocket endpoint for tunneling
+  endpoint-url  WebSocket endpoint for multiplexing
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		nargs := len(args)
@@ -45,21 +45,21 @@ var tunnelCmd = &cobra.Command{
 		}
 		addr := fmt.Sprintf("%s:%d", h, p)
 
-		s := tunnel.New(&tunnel.ServerConfig{
-			TunnelURL: u,
+		s := multiplexer.New(&multiplexer.ServerConfig{
+			MultiplexerURL: u,
 		})
 		l, err := s.Open(addr)
 		if err != nil {
 			panic(err)
 		}
 		fmt.Printf("Granblue Proxy is listening at %s\n", l.Addr().String())
-		fmt.Printf("Tunneling to %s\n", u.String())
+		fmt.Printf("Multiplexering to %s\n", u.String())
 		s.WaitGroup().Wait()
 	},
 }
 
 func init() {
-	tunnelCmd.PersistentFlags().String("host", "localhost", "Host the local proxy should listen at")
-	tunnelCmd.PersistentFlags().IntP("port", "p", 8088, "Port the local proxy should listen at")
-	rootCmd.AddCommand(tunnelCmd)
+	multiplexerCmd.PersistentFlags().String("host", "localhost", "Host the local proxy should listen at")
+	multiplexerCmd.PersistentFlags().IntP("port", "p", 8088, "Port the local proxy should listen at")
+	rootCmd.AddCommand(multiplexerCmd)
 }

@@ -1,4 +1,4 @@
-package tunnel
+package multiplexer
 
 import (
 	"errors"
@@ -36,7 +36,7 @@ type PendingRequest struct {
 
 type PendingRequestMap map[string]*PendingRequest
 
-type TunnelTransport struct {
+type MultiplexerTransport struct {
 	Controller      *websocket.Controller
 	Logger          *logging.Logger
 	PendingRequests PendingRequestMap
@@ -46,18 +46,18 @@ type TunnelTransport struct {
 type Server struct {
 	base      lib.Server
 	client    *http.Client
-	transport *TunnelTransport
+	transport *MultiplexerTransport
 }
 
 type ServerConfig struct {
-	TunnelURL *url.URL
+	MultiplexerURL *url.URL
 }
 
-func NewTunnelTransport(u *url.URL) *TunnelTransport {
+func NewMultiplexerTransport(u *url.URL) *MultiplexerTransport {
 	logger := logging.New(&logging.LoggerConfig{
-		Name: "Tunnel",
+		Name: "Multiplexer",
 	})
-	return &TunnelTransport{
+	return &MultiplexerTransport{
 		Controller: websocket.NewController(&websocket.Config{
 			URL: u,
 			ErrorHandler: func(err error) {
@@ -70,15 +70,15 @@ func NewTunnelTransport(u *url.URL) *TunnelTransport {
 	}
 }
 
-func (t *TunnelTransport) Init() error {
+func (t *MultiplexerTransport) Init() error {
 	return t.Controller.Connect()
 }
 
-func (t *TunnelTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *MultiplexerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.SendRequest(req)
 }
 
-func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error) {
+func (t *MultiplexerTransport) SendRequest(req *http.Request) (*http.Response, error) {
 	err := t.Controller.CheckLiveness()
 	if err != nil {
 		return nil, err
@@ -118,25 +118,25 @@ func (t *TunnelTransport) SendRequest(req *http.Request) (*http.Response, error)
 	return httpHelpers.UnserializeResponse(res)
 }
 
-func (t *TunnelTransport) AddPendingRequest(id string, p *PendingRequest) {
+func (t *MultiplexerTransport) AddPendingRequest(id string, p *PendingRequest) {
 	defer t.mutex.Unlock()
 	t.mutex.Lock()
 	t.PendingRequests[id] = p
 }
 
-func (t *TunnelTransport) GetPendingRequest(id string) *PendingRequest {
+func (t *MultiplexerTransport) GetPendingRequest(id string) *PendingRequest {
 	defer t.mutex.Unlock()
 	t.mutex.Lock()
 	return t.PendingRequests[id]
 }
 
-func (t *TunnelTransport) RemovePendingRequest(id string) {
+func (t *MultiplexerTransport) RemovePendingRequest(id string) {
 	defer t.mutex.Unlock()
 	t.mutex.Lock()
 	delete(t.PendingRequests, id)
 }
 
-func (t *TunnelTransport) PopPendingRequest(id string) *PendingRequest {
+func (t *MultiplexerTransport) PopPendingRequest(id string) *PendingRequest {
 	p := t.GetPendingRequest(id)
 	if p != nil {
 		t.RemovePendingRequest(id)
@@ -144,11 +144,11 @@ func (t *TunnelTransport) PopPendingRequest(id string) *PendingRequest {
 	return p
 }
 
-func (t *TunnelTransport) Send(data []byte) error {
+func (t *MultiplexerTransport) Send(data []byte) error {
 	return t.Controller.Write(data)
 }
 
-func (t *TunnelTransport) MarshalRequest(req *http.Request) ([]byte, error) {
+func (t *MultiplexerTransport) MarshalRequest(req *http.Request) ([]byte, error) {
 	ser, err := httpHelpers.SerializeRequest(req)
 	if err != nil {
 		return nil, err
@@ -156,7 +156,7 @@ func (t *TunnelTransport) MarshalRequest(req *http.Request) ([]byte, error) {
 	return msgpack.Marshal(*ser)
 }
 
-func (t *TunnelTransport) UnmarshalResponse(data []byte) (*http.Response, error) {
+func (t *MultiplexerTransport) UnmarshalResponse(data []byte) (*http.Response, error) {
 	var res *httpHelpers.Response
 	err := msgpack.Unmarshal(data, &res)
 	if err != nil {
@@ -166,7 +166,7 @@ func (t *TunnelTransport) UnmarshalResponse(data []byte) (*http.Response, error)
 }
 
 func New(config *ServerConfig) lib.Server {
-	transport := NewTunnelTransport(config.TunnelURL)
+	transport := NewMultiplexerTransport(config.MultiplexerURL)
 	client := &http.Client{
 		Transport: transport,
 	}

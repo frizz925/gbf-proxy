@@ -1,4 +1,4 @@
-package tunnel
+package multiplexer
 
 import (
 	"net/http"
@@ -11,7 +11,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func TestTunnel(t *testing.T) {
+func TestMultiplexer(t *testing.T) {
 	s, err := prepareServices()
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ func prepareServices() (lib.Server, error) {
 		return nil, err
 	}
 	s := New(&ServerConfig{
-		TunnelURL: &url.URL{
+		MultiplexerURL: &url.URL{
 			Scheme: "ws",
 			Host:   l.Addr().String(),
 		},
