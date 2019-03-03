@@ -53,7 +53,7 @@ var multiplexerCmd = &cobra.Command{
 			panic(err)
 		}
 		fmt.Printf("Granblue Proxy is listening at %s\n", l.Addr().String())
-		fmt.Printf("Multiplexering to %s\n", u.String())
+		fmt.Printf("Multiplexing to %s\n", u.String())
 		s.WaitGroup().Wait()
 	},
 }
