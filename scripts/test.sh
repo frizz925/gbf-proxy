@@ -36,7 +36,14 @@ run() {
 }
 
 request() {
-    curl -fsSL -x http://$PROXY_ADDRESS $@
+    REQUEST_OUTPUT_PATH=/tmp/gbf-proxy-test.request.out
+
+    curl -fsSL -N -x http://$PROXY_ADDRESS $@ > $REQUEST_OUTPUT_PATH
+    EXIT_CODE=$?
+
+    cat $REQUEST_OUTPUT_PATH
+    rm $REQUEST_OUTPUT_PATH
+    return $EXIT_CODE
 }
 
 echo "Spinning up cache service at $CACHE_ADDRESS..."
