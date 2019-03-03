@@ -191,20 +191,16 @@ func (s *Server) ListenWebSocket(ws *websocket.Conn) {
 	defer ws.Close()
 
 	ctx := websocket.NewContext(ws)
-	for listening := true; listening && s.Running() && ctx.Connected(); {
-		listening = s.ServeWebSocket(ctx)
+	for s.Running() && ctx.Connected() {
+		err := s.ServeWebSocket(ctx)
+		if err != nil {
+			s.base.Logger.Error(err)
+			break
+		}
 	}
 }
 
-func (s *Server) ServeWebSocket(ctx *websocket.Context) bool {
-	err := s.ServeWebSocketUnsafe(ctx)
-	if err != nil {
-		s.base.Logger.Error(err)
-	}
-	return true
-}
-
-func (s *Server) ServeWebSocketUnsafe(ctx *websocket.Context) error {
+func (s *Server) ServeWebSocket(ctx *websocket.Context) error {
 	// Receive the incoming request
 	data, err := ctx.Read()
 	if err != nil {

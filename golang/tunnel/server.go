@@ -215,16 +215,13 @@ func (s *Server) listenWebSocket() {
 	for s.Running() {
 		err := s.serveWebSocket()
 		if err != nil {
-			if err == websocket.NotConnectedError || err == websocket.UnhealthyError {
-				break
-			} else if err == websocket.NotInitializedError {
+			if err == websocket.NotInitializedError {
 				// This should NOT happen AT ALL. If it somehow gets here
 				// then there's invalid initialization logic going on here
 				panic(err)
-			} else if _, ok := err.(*websocket.CloseError); ok {
-				break
 			}
 			t.Logger.Error(err)
+			break
 		}
 	}
 
