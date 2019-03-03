@@ -75,11 +75,6 @@ request example.org | grep -q "Example Domain" && echo "OK" || (echo "FAIL!" && 
 printf "Testing forbidden host... "
 request github.com 2> /dev/null && echo "Not forbidden!" && exit 1 || echo "OK"
 
-LOCAL_LOG_PATH=/tmp/gbf-proxy-local.log
-if [ -f $LOCAL_LOG_PATH ]; then
-    rm $LOCAL_LOG_PATH
-fi
-
 LOCAL_PORT=38088
 printf "Spinning up local service... "
 run local -p $LOCAL_PORT &
