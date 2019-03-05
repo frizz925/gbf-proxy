@@ -176,7 +176,8 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 		if err == io.EOF {
 			finished = true
 		} else if err != nil {
-			return err
+			s.base.Logger.Error(err)
+			return nil
 		}
 		for sent := 0; sent < length; {
 			written, err := w.Write(buffer[sent:length])
@@ -184,7 +185,8 @@ func (s *Server) ServeHTTPUnsafe(w http.ResponseWriter, req *http.Request) error
 				finished = true
 				break
 			} else if err != nil {
-				return err
+				s.base.Logger.Error(err)
+				return nil
 			}
 			sent += written
 		}
