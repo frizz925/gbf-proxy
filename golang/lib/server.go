@@ -19,7 +19,7 @@ type Server interface {
 
 type BaseServer struct {
 	Name      string
-	Logger    *logging.Logger
+	Logger    logging.Logger
 	WaitGroup *sync.WaitGroup
 	Listener  net.Listener
 	running   bool

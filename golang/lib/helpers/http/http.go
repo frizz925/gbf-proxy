@@ -101,12 +101,12 @@ func UnserializeResponse(res *Response) (*http.Response, error) {
 	}, nil
 }
 
-func WriteServerError(logger *logging.Logger, w http.ResponseWriter, code int, message string, err error) {
+func WriteServerError(logger logging.Logger, w http.ResponseWriter, code int, message string, err error) {
 	logger.Error(err)
 	WriteError(logger, w, code, message)
 }
 
-func WriteError(logger *logging.Logger, w http.ResponseWriter, code int, message string) {
+func WriteError(logger logging.Logger, w http.ResponseWriter, code int, message string) {
 	w.WriteHeader(code)
 	_, err := w.Write([]byte(message + "\r\n"))
 	if err != nil {
@@ -125,7 +125,7 @@ func ParseURL(req *http.Request) *url.URL {
 	return u
 }
 
-func LogRequest(logger *logging.Logger, req *http.Request, message string) {
+func LogRequest(logger logging.Logger, req *http.Request, message string) {
 	u := ParseURL(req)
 	logger.Infof("%s %s %s - %s", req.RemoteAddr, req.Method, u.String(), message)
 }

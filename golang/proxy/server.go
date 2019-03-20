@@ -26,7 +26,7 @@ type Server struct {
 type tunnel struct {
 	established bool
 	lock        *sync.Mutex
-	logger      *logging.Logger
+	logger      logging.Logger
 }
 
 func New(config *ServerConfig) lib.Server {

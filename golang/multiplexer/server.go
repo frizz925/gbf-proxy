@@ -38,7 +38,7 @@ type PendingRequestMap map[string]*PendingRequest
 
 type MultiplexerTransport struct {
 	Controller      *websocket.Controller
-	Logger          *logging.Logger
+	Logger          logging.Logger
 	PendingRequests PendingRequestMap
 	mutex           *sync.Mutex
 }

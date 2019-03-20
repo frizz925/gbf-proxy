@@ -7,7 +7,18 @@ import (
 	"os"
 )
 
-type Logger struct {
+type Logger interface {
+	Debugf(format string, a ...interface{})
+	Debug(a ...interface{})
+	Infof(format string, a ...interface{})
+	Info(a ...interface{})
+	Warnf(format string, a ...interface{})
+	Warn(a ...interface{})
+	Errorf(format string, a ...interface{})
+	Error(a ...interface{})
+}
+
+type LoggerStd struct {
 	Name      string
 	Logger    *log.Logger
 	ErrLogger *log.Logger
@@ -29,7 +40,7 @@ func (w *nullWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func New(config *LoggerConfig) *Logger {
+func New(config *LoggerConfig) Logger {
 	writer := config.Writer
 	if writer == nil {
 		writer = DefaultWriter
@@ -42,54 +53,54 @@ func New(config *LoggerConfig) *Logger {
 	}
 	errLogger := log.New(errWriter, "", log.LstdFlags)
 
-	return &Logger{
+	return &LoggerStd{
 		Name:      config.Name,
 		Logger:    logger,
 		ErrLogger: errLogger,
 	}
 }
 
-func (l *Logger) Debugf(format string, a ...interface{}) {
+func (l *LoggerStd) Debugf(format string, a ...interface{}) {
 	l.Debug(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Debug(a ...interface{}) {
+func (l *LoggerStd) Debug(a ...interface{}) {
 	l.Log("debug", a...)
 }
 
-func (l *Logger) Infof(format string, a ...interface{}) {
+func (l *LoggerStd) Infof(format string, a ...interface{}) {
 	l.Info(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Info(a ...interface{}) {
+func (l *LoggerStd) Info(a ...interface{}) {
 	l.Log("info", a...)
 }
 
-func (l *Logger) Warnf(format string, a ...interface{}) {
+func (l *LoggerStd) Warnf(format string, a ...interface{}) {
 	l.Warn(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Warn(a ...interface{}) {
+func (l *LoggerStd) Warn(a ...interface{}) {
 	l.LogErr("warn", a...)
 }
 
-func (l *Logger) Errorf(format string, a ...interface{}) {
+func (l *LoggerStd) Errorf(format string, a ...interface{}) {
 	l.Error(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Error(a ...interface{}) {
+func (l *LoggerStd) Error(a ...interface{}) {
 	l.LogErr("error", a...)
 }
 
-func (l *Logger) Log(level string, a ...interface{}) {
+func (l *LoggerStd) Log(level string, a ...interface{}) {
 	l.Logger.Println(l.Format(level, a...))
 }
 
-func (l *Logger) LogErr(level string, a ...interface{}) {
+func (l *LoggerStd) LogErr(level string, a ...interface{}) {
 	l.ErrLogger.Println(l.Format(level, a...))
 }
 
-func (l *Logger) Format(level string, a ...interface{}) string {
+func (l *LoggerStd) Format(level string, a ...interface{}) string {
 	message := fmt.Sprint(a...)
 	return fmt.Sprintf("[%s] [%s] %s", l.Name, level, message)
 }
