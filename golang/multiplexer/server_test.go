@@ -9,6 +9,7 @@ import (
 	"github.com/Frizz925/gbf-proxy/golang/controller"
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMultiplexer(t *testing.T) {
@@ -46,17 +47,11 @@ func TestMultiplexer(t *testing.T) {
 
 func concurrencyTest(t *testing.T, wg *sync.WaitGroup, client *http.Client) {
 	res, err := client.Get("http://game.granbluefantasy.jp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	title := doc.Find("title").Text()
-	if title != "グランブルーファンタジー" {
-		t.Fatal("Invalid loaded page")
-	}
+	require.Equal(t, "グランブルーファンタジー", title, "Invalid loaded page")
 	wg.Done()
 }
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/stretchr/testify/require"
 )
 
 type testWebServer struct {
@@ -21,67 +22,43 @@ func TestForbidden(t *testing.T) {
 		WebHost: "not-localhost",
 	})
 	l, err := s.Open("localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	res, err := makeRequest(l)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	code := res.StatusCode
-	if code != 403 {
-		t.Fatalf("Request is not forbidden! Status code: %d", code)
-	}
+	require.Equalf(t, 403, code, "Request is not forbidden! Status code: %d", code)
 }
 
 func TestAllowed(t *testing.T) {
 	s := New(&ServerConfig{})
 	l, err := s.Open("localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	c := createClient(l)
 	res, err := c.Get("http://game.granbluefantasy.jp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	code := res.StatusCode
-	if code != 200 {
-		t.Fatalf("Request error. Status code: %d", code)
-	}
+	require.Equalf(t, 200, code, "Request error. Status code: %d", code)
 	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	title := doc.Find("title").Text()
-	if title != "グランブルーファンタジー" {
-		t.Fatal("Invalid loaded page")
-	}
+	require.Equal(t, "グランブルーファンタジー", title, "Invalid loaded page")
 }
 
 func TestAllowedCache(t *testing.T) {
 	s := New(&ServerConfig{})
 	l, err := s.Open("localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	c := createClient(l)
 	res, err := c.Get("http://game-a.granbluefantasy.jp/assets_en/font/basic.woff")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	code := res.StatusCode
-	if code != 200 {
-		t.Fatalf("Request error. Status code: %d", code)
-	}
+	require.Equalf(t, 200, code, "Request error. Status code: %d", code)
 }
 
 func TestWebServer(t *testing.T) {
 	expectedResponse := "Granblue Proxy Web Server"
 	w, err := createWebServer(expectedResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	addr := w.Addr().String()
 	config := &ServerConfig{
 		WebAddr: addr,
@@ -89,25 +66,15 @@ func TestWebServer(t *testing.T) {
 	}
 	s := New(config)
 	l, err := s.Open("localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	res, err := makeRequest(l)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	code := res.StatusCode
-	if code != 200 {
-		t.Fatalf("Request error! Got status code %d", code)
-	}
+	require.Equalf(t, 200, code, "Request error. Status code: %d", code)
 	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	bodyText := string(body)
-	if bodyText != expectedResponse {
-		t.Fatalf("Response mismatch! Expected: %s, got: %s", expectedResponse, bodyText)
-	}
+	require.Equalf(t, expectedResponse, bodyText, "Response mismatch! Expected: %s, got: %s", expectedResponse, bodyText)
 }
 
 func createClient(l net.Listener) *http.Client {

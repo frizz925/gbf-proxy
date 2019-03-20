@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type testState struct {
@@ -65,18 +67,12 @@ func TestHeartbeat(t *testing.T) {
 		},
 		Header: header,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer res.Body.Close()
 	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	text := string(b)
-	if text != "OK" {
-		t.Fatalf("Response mismatch. Expected: OK, Got: %s", text)
-	}
+	require.Equalf(t, "OK", text, "Response mismatch. Expected: OK, Got: %s", text)
 }
 
 func TestCache(t *testing.T) {
@@ -89,41 +85,26 @@ func TestCache(t *testing.T) {
 	}
 
 	firstResponse, err := sendRequest(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer firstResponse.Body.Close()
 	firstBody, err := ioutil.ReadAll(firstResponse.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(firstBody) <= 0 {
-		t.Fatal("Response body is empty!")
-	}
+	require.Nil(t, err)
+	require.NotZero(t, len(firstBody), "Response body is empty!")
 
 	// HACK: Sleep for a second before sending another request
 	time.Sleep(time.Second)
 	key := GetKeyForRequest(req)
 	_, err = state.server.FetchRawFromCache(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	secondResponse, err := sendRequest(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer secondResponse.Body.Close()
 	secondBody, err := ioutil.ReadAll(secondResponse.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(secondBody) <= 0 {
-		t.Fatal("Response body is empty!")
-	}
-	if !reflect.DeepEqual(firstBody, secondBody) {
-		t.Fatal("Computed and cached responses don't match!")
-	}
+	require.Nil(t, err)
+	require.NotZero(t, len(firstBody), "Response body is empty!")
+
+	require.True(t, reflect.DeepEqual(firstBody, secondBody), "Computed and cached responses don't match!")
 }
 
 func sendRequest(req *http.Request) (*http.Response, error) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Frizz925/gbf-proxy/golang/lib"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/stretchr/testify/require"
 )
 
 type testState struct {
@@ -58,20 +59,12 @@ func prepare(s lib.Server) lib.Server {
 
 func TestProxy(t *testing.T) {
 	res, err := state.client.Get("http://game.granbluefantasy.jp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	defer res.Body.Close()
 	code := res.StatusCode
-	if code != 200 {
-		t.Fatalf("Request error! Status code: %d", code)
-	}
+	require.Equalf(t, 200, code, "Request error! Status code: %d", code)
 	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	title := doc.Find("title").Text()
-	if title != "グランブルーファンタジー" {
-		t.Fatal("Invalid loaded page")
-	}
+	require.Equal(t, "グランブルーファンタジー", title, "Invalid loaded page")
 }

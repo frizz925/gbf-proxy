@@ -1,6 +1,10 @@
 package acl
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestDomains(t *testing.T) {
 	assetHostnames := []string{
@@ -22,26 +26,16 @@ func TestDomains(t *testing.T) {
 	}
 
 	for _, h := range assetHostnames {
-		if !IsGameAssetsDomain(h) {
-			t.Fatalf("%s should be game assets domain", h)
-		}
-		if !IsGameDomain(h) {
-			t.Fatalf("%s should be game domain", h)
-		}
+		assert.Truef(t, IsGameAssetsDomain(h), "%s should be game assets domain", h)
+		assert.Truef(t, IsGameDomain(h), "%s should be game domain", h)
 	}
 
 	for _, h := range allowed {
-		if IsGameAssetsDomain(h) {
-			t.Fatalf("%s should NOT be game assets domain", h)
-		}
-		if !IsGameDomain(h) {
-			t.Fatalf("%s should be game domain", h)
-		}
+		assert.Falsef(t, IsGameAssetsDomain(h), "%s should NOT be game assets domain", h)
+		assert.Truef(t, IsGameDomain(h), "%s should be game domain", h)
 	}
 
 	for _, h := range forbidden {
-		if IsGameDomain(h) {
-			t.Fatalf("%s should NOT be game domain", h)
-		}
+		assert.Falsef(t, IsGameDomain(h), "%s should NOT be game domain", h)
 	}
 }
