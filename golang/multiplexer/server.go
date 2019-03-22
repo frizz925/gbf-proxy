@@ -165,7 +165,7 @@ func (t *MultiplexerTransport) UnmarshalResponse(data []byte) (*http.Response, e
 	return httpHelpers.UnserializeResponse(res)
 }
 
-func New(config *ServerConfig) lib.Server {
+func New(config *ServerConfig) *Server {
 	transport := NewMultiplexerTransport(config.MultiplexerURL)
 	client := &http.Client{
 		Transport: transport,

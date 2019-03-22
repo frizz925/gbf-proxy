@@ -51,7 +51,7 @@ type Server struct {
 	wsLock         *sync.Mutex
 }
 
-func New(config *ServerConfig) lib.Server {
+func New(config *ServerConfig) *Server {
 	base := lib.NewBaseServer("Controller")
 	cacheClient := config.CacheClient
 	if cacheClient == nil {

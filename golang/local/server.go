@@ -28,7 +28,7 @@ type ServerConfig struct {
 	HttpClient *http.Client
 }
 
-func New(config *ServerConfig) lib.Server {
+func New(config *ServerConfig) *Server {
 	return &Server{
 		Client:    config.HttpClient,
 		waitGroup: &sync.WaitGroup{},

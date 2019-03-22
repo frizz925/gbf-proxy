@@ -54,7 +54,7 @@ type CacheReader struct {
 	Reader io.Reader
 }
 
-func New(config *ServerConfig) lib.Server {
+func New(config *ServerConfig) *Server {
 	base := lib.NewBaseServer("Cache")
 	internalCache := cache.New(DefaultExpirationTime, CleanUpIntervalTime)
 	redisClient := config.Redis
