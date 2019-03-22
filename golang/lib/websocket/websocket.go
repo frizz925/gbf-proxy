@@ -2,6 +2,8 @@ package websocket
 
 import (
 	"errors"
+	"net"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -45,6 +47,15 @@ type Config struct {
 	URL          *url.URL
 	Dialer       *websocket.Dialer
 	ErrorHandler ErrorHandler
+}
+
+type ResponseWriter interface {
+	http.ResponseWriter
+	http.Hijacker
+}
+
+type NetConn interface {
+	net.Conn
 }
 
 func NewController(config *Config) *Controller {

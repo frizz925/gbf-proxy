@@ -47,7 +47,7 @@ func testMainWrapper(m *testing.M) int {
 	}
 
 	state = &testState{
-		server:   s.(*Server),
+		server:   s,
 		config:   config,
 		client:   client,
 		listener: l,
