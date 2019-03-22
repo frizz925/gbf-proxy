@@ -1,18 +1,22 @@
 package websocket
 
 import (
-	"bufio"
 	"io"
-	"net/http"
+	"net"
+	"net/url"
 	"testing"
-	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/Frizz925/gbf-proxy/golang/lib/websocket/mocks"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
+
+type MockedConn struct {
+	mocks.NetConn
+}
 
 type MockedWriter struct {
 	io.Writer
@@ -24,44 +28,38 @@ type MockedReader struct {
 	mock.Mock
 }
 
-func TestWebsocket(t *testing.T) {
-	header := make(http.Header)
-	header.Add("Connection", "upgrade")
-	header.Add("Upgrade", "websocket")
-	header.Add("Sec-WebSocket-Version", "13")
-	header.Add("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+func (c *MockedConn) Write(p []byte) (int, error) {
+	return len(p), nil
+}
 
-	request := &http.Request{
-		Method: "GET",
-		Header: header,
+func TestWebsocket(t *testing.T) {
+	conn := &MockedConn{}
+	conn.On("Close").Return(nil)
+
+	dialer := &websocket.Dialer{
+		NetDial: func(string, string) (net.Conn, error) {
+			return conn, nil
+		},
 	}
 
-	writer := &MockedWriter{}
-	reader := &MockedReader{}
-	readWriter := bufio.NewReadWriter(
-		bufio.NewReader(reader),
-		bufio.NewWriter(writer),
-	)
-
-	conn := &mocks.NetConn{}
-	conn.On("SetDeadline", time.Time{}).Return(nil)
-	conn.On("Write", mock.AnythingOfType("[]uint8")).Return(0, nil)
-
-	responseWriter := &mocks.ResponseWriter{}
-	responseWriter.On("Header").Return(header)
-	responseWriter.On("WriteHeader", mock.AnythingOfType("int")).Return()
-	responseWriter.On("Write", mock.AnythingOfType("[]uint8")).Return(0, nil)
-	responseWriter.On("Hijack").Return(conn, readWriter, nil)
-
-	upgrader := &websocket.Upgrader{}
-	ws, err := upgrader.Upgrade(responseWriter, request, header)
-	require.Nil(t, err)
-	require.NotNil(t, ws)
-
-	ctx := NewContext(ws)
-	ctx.Init(func(err error) {
-		require.NotNil(t, err)
+	c := NewController(&Config{
+		Dialer: dialer,
+		URL: &url.URL{
+			Scheme: "ws",
+			Host:   "localhost:8000",
+			Path:   "/",
+		},
+		ErrorHandler: func(err error) {
+			require.Nil(t, err)
+		},
 	})
-	ctx.Lock()
-	ctx.Unlock()
+	assert.Equal(t, NotConnectedError, c.Disconnect())
+	assert.Equal(t, NotInitializedError, c.CheckLiveness())
+	assert.Equal(t, NotInitializedError, c.Write(nil))
+	_, err := c.Read()
+	assert.Equal(t, NotInitializedError, err)
+
+	assert.False(t, c.Connected())
+	assert.False(t, c.Healthy())
+	assert.Nil(t, c.Connect())
 }
