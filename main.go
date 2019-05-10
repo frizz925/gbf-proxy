@@ -42,26 +42,22 @@ func main() {
 
 func mainUnsafe() error {
 	wg := &sync.WaitGroup{}
-	l, err := net.Listen("tcp4", "127.0.0.1:3128")
+	l, err := net.Listen("tcp4", "127.0.0.1:8088")
 	if err != nil {
 		return err
 	}
 	log.Printf("Listening at %s", l.Addr().String())
 
 	c := make(chan ShutdownRequest, 1)
-
-	// Handle the exit signals
-	go handleSignal(c, l, wg)
-
 	// Handle the listener itself
 	wg.Add(1)
 	go handleListener(c, l, wg)
-	wg.Wait()
 
-	return nil
+	// Handle the exit signals
+	return handleSignal(c, l, wg)
 }
 
-func handleSignal(c chan ShutdownRequest, l net.Listener, wg *sync.WaitGroup) {
+func handleSignal(c chan ShutdownRequest, l net.Listener, wg *sync.WaitGroup) error {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 
@@ -69,14 +65,12 @@ func handleSignal(c chan ShutdownRequest, l net.Listener, wg *sync.WaitGroup) {
 	case <-signalChan:
 		c <- ShutdownRequest{}
 		err := l.Close()
+		wg.Wait()
 		if err != nil {
-			handleError(err)
-			os.Exit(1)
-		} else {
-			wg.Wait()
-			os.Exit(0)
+			return err
 		}
 	}
+	return nil
 }
 
 func handleListener(c chan ShutdownRequest, l net.Listener, wg *sync.WaitGroup) {
@@ -90,7 +84,6 @@ func handleListener(c chan ShutdownRequest, l net.Listener, wg *sync.WaitGroup) 
 
 		conn, err := l.Accept()
 		if err != nil {
-			handleError(err)
 			continue
 		}
 
@@ -102,6 +95,8 @@ func handleListener(c chan ShutdownRequest, l net.Listener, wg *sync.WaitGroup) 
 func handleConn(conn net.Conn, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer conn.Close()
+	defer log.Printf("%s Connection closed", conn.RemoteAddr().String())
+	log.Printf("%s Connection opened", conn.RemoteAddr().String())
 	err := handleConnRequest(conn)
 	if err != nil {
 		handleConnError(conn, err)
@@ -134,7 +129,7 @@ func handleConnRequest(conn net.Conn) error {
 	return nil
 }
 
-func handleRequest(conn net.Conn, req *http.Request) error {
+func handleRequest(in net.Conn, req *http.Request) error {
 	host, port, err := net.SplitHostPort(req.Host)
 	if err != nil {
 		host = req.URL.Hostname()
@@ -157,12 +152,12 @@ func handleRequest(conn net.Conn, req *http.Request) error {
 	}
 
 	if req.Method == "CONNECT" {
-		log.Printf("%s %s %s", conn.RemoteAddr().String(), req.Method, req.Host)
-		err := dumpResponse(conn, createResponse(req, http.StatusOK, "Connection Established", nil))
+		log.Printf("%s %s %s", in.RemoteAddr().String(), req.Method, req.Host)
+		err := dumpResponse(in, createResponse(req, http.StatusOK, "Connection Established", nil))
 		if err != nil {
 			return err
 		}
-		newReq, err := http.ReadRequest(bufio.NewReader(conn))
+		newReq, err := http.ReadRequest(bufio.NewReader(in))
 		if err != nil {
 			return err
 		}
@@ -185,7 +180,7 @@ func handleRequest(conn net.Conn, req *http.Request) error {
 	if req.URL.Path == "" {
 		req.URL.Path = "/"
 	}
-	log.Printf("%s %s %s", conn.RemoteAddr().String(), req.Method, req.URL.String())
+	log.Printf("%s %s %s", in.RemoteAddr().String(), req.Method, req.URL.String())
 
 	addr := net.JoinHostPort(host, port)
 	out, err := net.Dial("tcp4", addr)
@@ -193,11 +188,7 @@ func handleRequest(conn net.Conn, req *http.Request) error {
 		return err
 	}
 	defer out.Close()
-
-	c := make(chan error, 1)
-	go func() {
-		c <- pipe(out, conn)
-	}()
+	go pipe(in, out)
 
 	p, err := httputil.DumpRequestOut(req, true)
 	if err != nil {
@@ -207,30 +198,20 @@ func handleRequest(conn net.Conn, req *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = pipe(conn, out)
-	if err != nil {
-		return err
-	}
+	pipe(out, in)
 
-	select {
-	case <-c:
-		return <-c
-	default:
-		return nil
-	}
+	return nil
 }
 
-func pipe(src io.Reader, dst io.Writer) error {
+func pipe(dst io.WriteCloser, src io.ReadCloser) {
+	defer src.Close()
+	defer dst.Close()
 	for {
 		_, err := io.CopyN(dst, src, 4096)
 		if err != nil {
-			if err != io.EOF {
-				return err
-			}
 			break
 		}
 	}
-	return nil
 }
 
 func createResponse(req *http.Request, code int, status string, body io.ReadCloser) *http.Response {
