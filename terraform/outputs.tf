@@ -1,3 +1,3 @@
 output "public_ip" {
-  value = "${cidrhost(vultr_reserved_ip.gbf-proxy.cidr, 0)}"
+  value = "${vultr_instance.gbf-proxy.ipv4_address}"
 }

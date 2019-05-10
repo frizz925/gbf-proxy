@@ -13,9 +13,3 @@ resource "vultr_instance" "gbf-proxy" {
   tag               = "gbf-proxy"
   firewall_group_id = "${vultr_firewall_group.gbf-proxy.id}"
 }
-
-resource "vultr_reserved_ip" "gbf-proxy" {
-  name        = "Granblue Proxy Reserved IP"
-  attached_id = "${vultr_instance.gbf-proxy.id}"
-  region_id   = "${var.region_id}"
-}
