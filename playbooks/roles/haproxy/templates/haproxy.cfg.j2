@@ -10,9 +10,6 @@ global
     group haproxy
     daemon
 
-backend proxy-backend
-    server proxy1 127.0.0.1:8088 check
-
 listen proxy
     bind *:80
     bind *:443 ssl crt /etc/haproxy/haproxy.pem ciphers EECDH+AESGCM:EDH+AESGCM force-tlsv12 no-sslv3
