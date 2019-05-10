@@ -1,0 +1,24 @@
+- name: Install haproxy
+  apt:
+    name: haproxy
+    state: latest
+    update_cache: yes
+    cache_valid_time: 86400
+- name: Copy certificate
+  copy:
+    src: haproxy.pem
+    dest: /etc/haproxy/haproxy.pem
+    owner: root
+    group: root
+    mode: 0600
+  notify:
+  - reload haproxy
+- name: Write haproxy config
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+  - reload haproxy

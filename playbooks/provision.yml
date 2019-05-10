@@ -1,0 +1,7 @@
+- hosts: localhost
+  roles:
+  - app-build
+- hosts: gbf-proxy
+  roles:
+  - app
+  - haproxy

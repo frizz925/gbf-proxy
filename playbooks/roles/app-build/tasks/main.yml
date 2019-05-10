@@ -1,0 +1,11 @@
+- name: Get Granblue Proxy version
+  shell: git describe --always --long --dirty 2>/dev/null || printf latest
+  register: version
+- name: Build Granblue Proxy binary
+  shell: >
+    GOOS=linux GOARCH=amd64
+    go build -o build/gbf-proxy
+    -ldflags="-X main.appVersion={{ version.stdout }}"
+    ./main.go
+  args:
+    chdir: "{{ playbook_dir }}/.."

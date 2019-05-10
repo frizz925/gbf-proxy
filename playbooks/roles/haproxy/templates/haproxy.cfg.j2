@@ -1,0 +1,29 @@
+global
+    ssl-default-bind-options no-sslv3 no-tls-tickets force-tlsv12
+    ssl-default-bind-ciphers EECDH+AESGCM:EDH+AESGCM
+    tune.ssl.default-dh-param 2048
+
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+backend proxy-backend
+    server proxy1 127.0.0.1:8088 check
+
+listen proxy
+    bind *:80
+    bind *:443 ssl crt /etc/haproxy/haproxy.pem ciphers EECDH+AESGCM:EDH+AESGCM force-tlsv12 no-sslv3
+
+    mode    tcp
+    option  tcplog
+    log     global
+
+    timeout connect 30s
+    timeout client  1m
+    timeout server  1m
+
+    balance leastconn
+    server proxy1 127.0.0.1:8088 check

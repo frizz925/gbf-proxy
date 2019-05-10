@@ -1,0 +1,11 @@
+[Unit]
+Description=Granblue Proxy
+After=network.target syslog.service
+Wants=syslog.service
+
+[Service]
+ExecStart=/opt/gbf-proxy
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

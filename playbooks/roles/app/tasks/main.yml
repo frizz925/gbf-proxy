@@ -1,0 +1,24 @@
+- name: Copy Granblue Proxy binary
+  copy:
+    src: "{{ playbook_dir }}/../build/gbf-proxy"
+    dest: /opt/gbf-proxy
+    owner: root
+    group: root
+    mode: 0755
+- name: Copy Granblue Proxy service file
+  copy:
+    src: gbf-proxy.service
+    dest: /lib/systemd/system/gbf-proxy.service
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+  - reload systemd
+- name: Flush all handlers
+  meta: flush_handlers
+- name: Restart Granblue Proxy service
+  systemd:
+    name: gbf-proxy
+    enabled: yes
+    state: restarted
+
