@@ -42,7 +42,11 @@ func main() {
 
 func mainUnsafe() error {
 	wg := &sync.WaitGroup{}
-	l, err := net.Listen("tcp4", "127.0.0.1:8088")
+	addr := "127.0.0.1:4000"
+	if len(os.Args) >= 2 {
+		addr = os.Args[1]
+	}
+	l, err := net.Listen("tcp4", addr)
 	if err != nil {
 		return err
 	}
