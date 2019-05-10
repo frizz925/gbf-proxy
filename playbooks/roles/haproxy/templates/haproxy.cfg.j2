@@ -1,7 +1,8 @@
 global
-    ssl-default-bind-options no-sslv3 no-tls-tickets force-tlsv12
-    ssl-default-bind-ciphers EECDH+AESGCM:EDH+AESGCM
-    tune.ssl.default-dh-param 2048
+    maxconn 65535
+    log /dev/log local0
+    nbproc 1
+    nbthread 2
 
     chroot /var/lib/haproxy
     stats socket /run/haproxy/admin.sock mode 660 level admin
@@ -9,6 +10,10 @@ global
     user haproxy
     group haproxy
     daemon
+
+    ssl-default-bind-options no-sslv3 no-tls-tickets force-tlsv12
+    ssl-default-bind-ciphers EECDH+AESGCM:EDH+AESGCM
+    tune.ssl.default-dh-param 2048
 
 listen proxy
     bind *:80
