@@ -99,8 +99,8 @@ func handleListener(c chan ShutdownRequest, l net.Listener, wg *sync.WaitGroup) 
 func handleConn(conn net.Conn, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer conn.Close()
-	defer log.Printf("%s Connection closed", conn.RemoteAddr().String())
-	log.Printf("%s Connection opened", conn.RemoteAddr().String())
+	// defer log.Printf("%s Connection closed", conn.RemoteAddr().String())
+	// log.Printf("%s Connection opened", conn.RemoteAddr().String())
 	err := handleConnRequest(conn)
 	if err != nil {
 		handleConnError(conn, err)
