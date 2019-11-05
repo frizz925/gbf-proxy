@@ -61,8 +61,7 @@ func (h *CacheHandler) ForwardRequest(ctx Context, req *http.Request) (*http.Res
 }
 
 func (c *CacheContext) ForwardRequest(req *http.Request) (*http.Response, error) {
-	host := req.URL.Host
-	if !c.shouldCache(host) {
+	if !c.shouldCacheRequest(req) {
 		return c.Forwarder.ForwardRequest(c.Context, req)
 	}
 	key := c.getCacheKey(req.URL)
@@ -79,10 +78,19 @@ func (c *CacheContext) ForwardRequest(req *http.Request) (*http.Response, error)
 	if err != nil {
 		return nil, err
 	}
+
+	if !c.shouldCacheResponse(res) {
+		return res, nil
+	}
 	return c.putCacheAsync(key, req, res)
 }
 
-func (c *CacheContext) shouldCache(host string) bool {
+func (c *CacheContext) shouldCacheRequest(req *http.Request) bool {
+	if req.Method != "GET" {
+		return false
+	}
+
+	host := req.URL.Hostname()
 	if v, ok := c.Handler.hostCache[host]; ok {
 		return v
 	} else if strings.HasPrefix(host, "game-a") && strings.HasSuffix(host, ".granbluefantasy.jp") {
@@ -94,6 +102,10 @@ func (c *CacheContext) shouldCache(host string) bool {
 	}
 	c.Handler.hostCache[host] = true
 	return true
+}
+
+func (c *CacheContext) shouldCacheResponse(res *http.Response) bool {
+	return res.StatusCode >= 200 && res.StatusCode < 300
 }
 
 func (c *CacheContext) getCache(key string, req *http.Request) (*http.Response, error) {

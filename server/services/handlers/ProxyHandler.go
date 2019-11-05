@@ -126,9 +126,11 @@ func (c *ProxyContext) ForwardTunnel(req *http.Request, u *url.URL) error {
 		return err
 	}
 	defer conn.Close()
-	err = req.Write(conn)
-	if err != nil {
-		return err
+	if u.Scheme == "http" {
+		err = req.Write(conn)
+		if err != nil {
+			return err
+		}
 	}
 	cerr := make(chan error, 1)
 	go func() {
