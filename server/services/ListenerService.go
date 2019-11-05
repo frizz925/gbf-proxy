@@ -7,21 +7,19 @@ import (
 	"net"
 )
 
-type ProxyService struct {
+var log = logger.DefaultLogger
+
+type ListenerService struct {
 	handlers.ConnectionForwarder
-	log logger.Logger
 }
 
-var _ ListeningService = (*ProxyService)(nil)
-
-func NewProxyService(c handlers.ConnectionForwarder) *ProxyService {
-	return &ProxyService{
+func NewListenerService(c handlers.ConnectionForwarder) *ListenerService {
+	return &ListenerService{
 		ConnectionForwarder: c,
-		log:                 logger.Factory.New(),
 	}
 }
 
-func (s *ProxyService) Listen(l net.Listener) error {
+func (s *ListenerService) Listen(l net.Listener) error {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -31,10 +29,10 @@ func (s *ProxyService) Listen(l net.Listener) error {
 	}
 }
 
-func (s *ProxyService) HandleConnection(conn net.Conn) {
+func (s *ListenerService) HandleConnection(conn net.Conn) {
 	defer conn.Close()
 	err := s.ConnectionForwarder.ForwardConnection(conn)
 	if err != nil && err != io.EOF {
-		s.log.Error(err)
+		log.Error(err)
 	}
 }

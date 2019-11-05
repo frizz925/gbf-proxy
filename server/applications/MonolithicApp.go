@@ -7,18 +7,23 @@ import (
 	"gbf-proxy/services"
 	"gbf-proxy/services/handlers"
 	"net"
+	"os"
+	"strings"
 
 	"github.com/bradfitz/gomemcache/memcache"
 )
 
-type MonolithicApp struct{}
+type MonolithicApp struct {
+	MemcachedAddr string
+	ListenerAddr  string
+}
 
 var _ Application = (*MonolithicApp)(nil)
 
-var log = logger.Factory.New()
+var log = logger.DefaultLogger
 
-func (MonolithicApp) Start() error {
-	memcachedClient := memcache.New("127.0.0.1:11211")
+func (a MonolithicApp) Start() error {
+	memcachedClient := memcache.New(a.MemcachedAddr)
 	msgpackMarshaler := marshaler.NewMsgpackMarshaler()
 	cacheClient := cache.NewMemcachedClient(memcachedClient, msgpackMarshaler)
 
@@ -26,12 +31,28 @@ func (MonolithicApp) Start() error {
 	cacheHandler := handlers.NewCacheHandler(requestHandler, cacheClient)
 	proxyHandler := handlers.NewProxyHandler(cacheHandler)
 	connectionHandler := handlers.NewConnectionHandler(proxyHandler)
-	service := services.NewProxyService(connectionHandler)
+	service := services.NewListenerService(connectionHandler)
 
-	l, err := net.Listen("tcp4", "127.0.0.1:8088")
+	l, err := a.createListener(a.ListenerAddr)
 	if err != nil {
 		return err
 	}
-	log.Info("Proxy listening at 127.0.0.1:8088")
+	defer l.Close()
+	log.Infof("Proxy listening at %s", a.ListenerAddr)
 	return service.Listen(l)
+}
+
+func (a MonolithicApp) createListener(addr string) (net.Listener, error) {
+	unixPrefix := "unix://"
+	if strings.HasPrefix(addr, unixPrefix) {
+		unixAddr := strings.ReplaceAll(addr, unixPrefix, "")
+		if s, err := os.Stat(unixAddr); !os.IsNotExist(err) {
+			err = os.Remove(s.Name())
+			if err != nil {
+				return nil, err
+			}
+		}
+		return net.Listen("unix", unixAddr)
+	}
+	return net.Listen("tcp4", addr)
 }
