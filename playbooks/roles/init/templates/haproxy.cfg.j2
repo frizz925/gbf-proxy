@@ -1,0 +1,28 @@
+global
+  maxconn 50000
+  log /dev/log local0
+  user haproxy
+  group haproxy
+  stats socket /run/haproxy/admin.sock user haproxy group haproxy mode 660
+  nbproc 1
+  nbthread 4
+  cpu-map auto:all 0-63
+
+defaults
+  timeout connect 10s
+  timeout client 30s
+  timeout server 30s
+  log global
+  mode tcp
+
+frontend edges
+  bind 0.0.0.0:80
+  bind 0.0.0.0:8088
+  default_backend proxy_servers
+
+backend proxy_servers
+  balance roundrobin
+  default-server check maxconn 100
+{% for name in server_names %}
+  server {{ name }} unix@{{ remote_server_dir }}/{{ name }}.sock
+{% endfor %}

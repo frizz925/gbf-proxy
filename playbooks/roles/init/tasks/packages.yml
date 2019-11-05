@@ -1,0 +1,13 @@
+- name: Installing required packages
+  apt:
+    name:
+      - python
+      - python-pip
+      - python3
+      - python3-pip
+      - supervisor
+      - haproxy
+      - memcached
+    update_cache: yes
+    cache_valid_time: 86400
+    state: latest

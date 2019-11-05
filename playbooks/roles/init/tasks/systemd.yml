@@ -1,0 +1,5 @@
+- name: "Stopping {{ item }} service"
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no

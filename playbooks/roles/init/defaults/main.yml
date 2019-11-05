@@ -1,0 +1,5 @@
+server_dir: "{{ playbook_dir }}/../server"
+remote_server_dir: "/opt/gbf-proxy"
+server_names:
+  - proxy-a
+  - proxy-b

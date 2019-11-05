@@ -1,0 +1,4 @@
+- name: Building server binary file
+  make:
+    chdir: "{{ playbook_dir }}/../server"
+    target: build

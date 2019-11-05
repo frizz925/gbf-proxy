@@ -1,0 +1,34 @@
+- name: Configuring system pakcages
+  include: packages.yml
+  tags:
+    - packages
+- name: Configuring systemd services
+  include: systemd.yml
+  with_items:
+    - haproxy
+    - memcached
+  tags:
+    - services
+    - haproxy
+    - memcached
+    - supervisord
+- name: Configuring supervisord
+  include: supervisord.yml
+  tags:
+    - services
+    - supervisord
+- name: Setting up server
+  include: server.yml
+  tags:
+    - services
+    - proxy
+- name: Configuring HAProxy
+  include: haproxy.yml
+  tags:
+    - services
+    - haproxy
+- name: Restarting supervisord
+  systemd:
+    name: supervisor
+    state: started
+    enabled: yes

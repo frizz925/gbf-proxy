@@ -1,0 +1,16 @@
+- name: Build binary file
+  hosts: localhost
+  gather_facts: no
+  pre_tasks:
+    - name: Getting server version
+      shell: git describe --long --always --dirty
+      register: sh_server_version
+    - name: Setting fact for server version
+      set_fact:
+        server_version: "{{ sh_server_version.stdout | trim }}"
+  roles:
+    - build
+  tags:
+    - build
+    - services
+    - proxy
