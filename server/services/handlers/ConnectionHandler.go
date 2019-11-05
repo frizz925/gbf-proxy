@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"gbf-proxy/lib/logger"
+	"io"
 	"net"
 )
 
@@ -21,13 +22,11 @@ func NewConnectionHandler(sf StreamForwarder) *ConnectionHandler {
 
 func (h *ConnectionHandler) ForwardConnection(conn net.Conn) error {
 	connLogger := logger.NewConnectionLogger(conn, h.Logger)
-	defer connLogger.Info("Connection closed")
-	connLogger.Info("Connection accepted")
 	err := h.StreamForwarder.Forward(Context{
 		Conn:   conn,
 		Logger: connLogger,
 	}, conn, conn)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		connLogger.Error(err)
 	}
 	return nil
