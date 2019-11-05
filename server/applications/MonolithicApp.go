@@ -52,7 +52,11 @@ func (a MonolithicApp) createListener(addr string) (net.Listener, error) {
 				return nil, err
 			}
 		}
-		return net.Listen("unix", unixAddr)
+		l, err := net.Listen("unix", unixAddr)
+		if err != nil {
+			return nil, err
+		}
+		return l, os.Chmod(unixAddr, 0666)
 	}
 	return net.Listen("tcp4", addr)
 }
