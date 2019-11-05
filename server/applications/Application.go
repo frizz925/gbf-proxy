@@ -1,5 +1,5 @@
 package applications
 
 type Application interface {
-	Start()
+	Start() error
 }
