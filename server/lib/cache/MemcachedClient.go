@@ -6,7 +6,7 @@ import (
 	"github.com/bradfitz/gomemcache/memcache"
 )
 
-const DEFAULT_MEMCACHED_EXPIRATION = 3600
+const DEFAULT_MEMCACHED_EXPIRATION = 86400
 
 type MemcachedClient struct {
 	*memcache.Client
