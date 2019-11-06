@@ -1,6 +1,6 @@
 global
   maxconn 50000
-  log /dev/log local0
+  log /dev/stdout local0 info
   user haproxy
   group haproxy
   stats socket /run/haproxy/admin.sock user haproxy group haproxy mode 660
@@ -13,7 +13,8 @@ defaults
   timeout client 30s
   timeout server 30s
   log global
-  mode tcp
+  mode http
+  option httplog
 
 frontend edges
   bind 0.0.0.0:80
