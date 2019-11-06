@@ -10,7 +10,7 @@ import (
 var (
 	log     = logger.DefaultLogger
 	rootCmd = &cobra.Command{
-		Use:   "gbf-proxy <listener-address>",
+		Use:   "gbf-proxy <listener-address> [hostname]",
 		Short: "Start the monolithic Granblue Proxy service",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -19,7 +19,12 @@ var (
 			if err != nil {
 				return err
 			}
+			hostname := "localhost"
+			if len(args) >= 2 {
+				hostname = args[1]
+			}
 			return (applications.MonolithicApp{
+				Hostname:      hostname,
 				ListenerAddr:  listenerAddr,
 				MemcachedAddr: memcachedAddr,
 			}).Start()

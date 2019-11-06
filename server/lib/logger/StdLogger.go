@@ -90,7 +90,7 @@ func (l *StdLogger) Printf(ll *log.Logger, level string, msg string) {
 }
 
 func (l *StdLogger) Sprintln(v ...interface{}) string {
-	return fmt.Sprintf("[%s] %s", l.GetSource(), fmt.Sprint(v...))
+	return fmt.Sprintf("[%s] %s", l.GetSource(), fmt.Sprintln(v...))
 }
 
 func (l *StdLogger) Sprintf(format string, v ...interface{}) string {

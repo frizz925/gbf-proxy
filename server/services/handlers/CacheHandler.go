@@ -13,16 +13,9 @@ import (
 )
 
 type CacheHandler struct {
-	RequestForwarder
+	RequestHandler
 	cache.Client
 	hostCache map[string]bool
-}
-
-type CacheContext struct {
-	Context   Context
-	Handler   *CacheHandler
-	Forwarder RequestForwarder
-	Cache     cache.Client
 	log       logger.Logger
 }
 
@@ -40,58 +33,50 @@ type cachedResponse struct {
 	Trailer          http.Header
 }
 
-var _ RequestForwarder = (*CacheHandler)(nil)
+var _ RequestHandler = (*CacheHandler)(nil)
 
-func NewCacheHandler(rf RequestForwarder, c cache.Client) *CacheHandler {
+func NewCacheHandler(rh RequestHandler, c cache.Client) *CacheHandler {
 	return &CacheHandler{
-		RequestForwarder: rf,
-		Client:           c,
-		hostCache:        make(map[string]bool),
+		RequestHandler: rh,
+		Client:         c,
+		hostCache:      make(map[string]bool),
+		log:            logger.DefaultLogger,
 	}
 }
 
-func (h *CacheHandler) ForwardRequest(ctx Context, req *http.Request) (*http.Response, error) {
-	return (&CacheContext{
-		Context:   ctx,
-		Handler:   h,
-		Forwarder: h.RequestForwarder,
-		Cache:     h.Client,
-		log:       ctx.Logger,
-	}).ForwardRequest(req)
-}
-
-func (c *CacheContext) ForwardRequest(req *http.Request) (*http.Response, error) {
-	if !c.shouldCacheRequest(req) {
-		return c.Forwarder.ForwardRequest(c.Context, req)
+func (h *CacheHandler) HandleRequest(req *http.Request) (*http.Response, error) {
+	if !h.shouldCacheRequest(req) {
+		return h.RequestHandler.HandleRequest(req)
 	}
-	key := c.getCacheKey(req.URL)
-	exists, err := c.Cache.Has(key)
+
+	key := h.getCacheKey(req.URL)
+	exists, err := h.Client.Has(key)
 	if err != nil {
 		return nil, err
 	}
 	if exists {
-		c.log.Infof("Cache HIT: %s", key)
-		return c.getCache(key, req)
+		h.log.Infof("Cache HIT: %s", key)
+		return h.getCache(key, req)
 	}
-	c.log.Infof("Cache MISS: %s", key)
-	res, err := c.Forwarder.ForwardRequest(c.Context, req)
+
+	h.log.Infof("Cache MISS: %s", key)
+	res, err := h.RequestHandler.HandleRequest(req)
 	if err != nil {
 		return nil, err
 	}
-
-	if !c.shouldCacheResponse(res) {
+	if !h.shouldCacheResponse(res) {
 		return res, nil
 	}
-	return c.putCacheAsync(key, req, res)
+	return h.putCacheAsync(key, req, res)
 }
 
-func (c *CacheContext) shouldCacheRequest(req *http.Request) bool {
+func (h *CacheHandler) shouldCacheRequest(req *http.Request) bool {
 	if req.Method != "GET" {
 		return false
 	}
 
 	host := req.URL.Hostname()
-	if v, ok := c.Handler.hostCache[host]; ok {
+	if v, ok := h.hostCache[host]; ok {
 		return v
 	} else if strings.HasPrefix(host, "game-a") && strings.HasSuffix(host, ".granbluefantasy.jp") {
 		// do nothing
@@ -100,47 +85,47 @@ func (c *CacheContext) shouldCacheRequest(req *http.Request) bool {
 	} else {
 		return false
 	}
-	c.Handler.hostCache[host] = true
+	h.hostCache[host] = true
 	return true
 }
 
-func (c *CacheContext) shouldCacheResponse(res *http.Response) bool {
+func (h *CacheHandler) shouldCacheResponse(res *http.Response) bool {
 	return res.StatusCode >= 200 && res.StatusCode < 300
 }
 
-func (c *CacheContext) getCache(key string, req *http.Request) (*http.Response, error) {
+func (h *CacheHandler) getCache(key string, req *http.Request) (*http.Response, error) {
 	cr := &cachedResponse{}
-	err := c.Cache.Get(key, cr)
+	err := h.Client.Get(key, cr)
 	if err != nil {
 		return nil, err
 	}
 	return cr.unmarshal(req), nil
 }
 
-func (c *CacheContext) putCacheAsync(key string, req *http.Request, res *http.Response) (*http.Response, error) {
+func (h *CacheHandler) putCacheAsync(key string, req *http.Request, res *http.Response) (*http.Response, error) {
 	cr, err := marshalResponse(res)
 	if err != nil {
 		return nil, err
 	}
 	go func() {
-		err := c.putCache(key, cr)
+		err := h.putCache(key, cr)
 		if err != nil {
-			c.log.Error(err)
+			h.log.Error(err)
 		}
 	}()
 	return cr.unmarshal(req), nil
 }
 
-func (c *CacheContext) putCache(key string, cr *cachedResponse) error {
-	err := c.Cache.Set(key, cr)
+func (h *CacheHandler) putCache(key string, cr *cachedResponse) error {
+	err := h.Client.Set(key, cr)
 	if err != nil {
 		return err
 	}
-	c.log.Infof("Cache PUT: %s", key)
+	h.log.Infof("Cache PUT: %s", key)
 	return nil
 }
 
-func (c *CacheContext) getCacheKey(u *url.URL) string {
+func (h *CacheHandler) getCacheKey(u *url.URL) string {
 	query := u.RawQuery
 	if query == "" {
 		return u.Path

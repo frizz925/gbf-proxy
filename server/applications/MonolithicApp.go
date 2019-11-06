@@ -14,6 +14,7 @@ import (
 )
 
 type MonolithicApp struct {
+	Hostname      string
 	MemcachedAddr string
 	ListenerAddr  string
 }
@@ -27,10 +28,11 @@ func (a MonolithicApp) Start() error {
 	msgpackMarshaler := marshaler.NewMsgpackMarshaler()
 	cacheClient := cache.NewMemcachedClient(memcachedClient, msgpackMarshaler)
 
-	requestHandler := handlers.NewRequestHandler()
-	cacheHandler := handlers.NewCacheHandler(requestHandler, cacheClient)
-	proxyHandler := handlers.NewProxyHandler(cacheHandler)
-	connectionHandler := handlers.NewConnectionHandler(proxyHandler)
+	proxyHandler := handlers.NewProxyHandler()
+	cacheHandler := handlers.NewCacheHandler(proxyHandler, cacheClient)
+	webHandler := handlers.NewWebHandler(a.Hostname)
+	gatewayHandler := handlers.NewGatewayHandler(cacheHandler, webHandler)
+	connectionHandler := handlers.NewConnectionHandler(gatewayHandler)
 	service := services.NewListenerService(connectionHandler)
 
 	l, err := a.createListener(a.ListenerAddr)

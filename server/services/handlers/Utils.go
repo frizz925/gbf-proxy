@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -59,4 +60,8 @@ func mergeURLs(target *url.URL, sources ...*url.URL) *url.URL {
 		}
 	}
 	return target
+}
+
+func requestToString(req *http.Request) string {
+	return fmt.Sprintf("%s %s", req.Method, req.URL.String())
 }
