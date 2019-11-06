@@ -1,0 +1,22 @@
+- name: Creating swap file
+  shell: "dd if=/dev/zero of={{ swap_file }} bs=4M count=256 && mkswap {{ swap_file }}"
+  args:
+    creates: "{{ swap_file }}"
+- name: Setting swap file permission
+  file:
+    path: "{{ swap_file }}"
+    state: file
+    owner: root
+    group: root
+    mode: 0600
+- name: Mounting swap file
+  mount:
+    src: "{{ swap_file }}"
+    path: none
+    fstype: swap
+    opts: sw
+    state: present
+- name: Making sure swap is running
+  shell: swapon -a
+  changed_when: false
+

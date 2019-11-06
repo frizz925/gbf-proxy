@@ -2,6 +2,10 @@
   include: packages.yml
   tags:
     - packages
+- name: Configuring swap memory
+  include: swap.yml
+  tags:
+    - swap
 - name: Configuring systemd services
   include: systemd.yml
   with_items:
