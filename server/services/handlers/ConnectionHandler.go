@@ -21,13 +21,12 @@ func NewConnectionHandler(sf StreamForwarder) *ConnectionHandler {
 }
 
 func (h *ConnectionHandler) ForwardConnection(conn net.Conn) error {
-	connLogger := logger.NewConnectionLogger(conn, h.Logger)
 	err := h.StreamForwarder.Forward(Context{
 		Conn:   conn,
-		Logger: connLogger,
+		Logger: h.Logger,
 	}, conn, conn)
 	if err != nil && err != io.EOF {
-		connLogger.Error(err)
+		h.Logger.Error(err)
 	}
 	return nil
 }
