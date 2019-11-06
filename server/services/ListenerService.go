@@ -1,6 +1,7 @@
 package services
 
 import (
+	connlib "gbf-proxy/lib/conn"
 	"gbf-proxy/lib/logger"
 	"gbf-proxy/services/handlers"
 	"io"
@@ -10,13 +11,25 @@ import (
 var log = logger.DefaultLogger
 
 type ListenerService struct {
+	Name string
 	handlers.ConnectionForwarder
 }
 
-func NewListenerService(c handlers.ConnectionForwarder) *ListenerService {
+func NewListenerService(name string, c handlers.ConnectionForwarder) *ListenerService {
 	return &ListenerService{
+		Name:                name,
 		ConnectionForwarder: c,
 	}
+}
+
+func (s *ListenerService) Serve(addr string) error {
+	l, err := connlib.CreateListener(addr)
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+	log.Infof("%s listening at %s", s.Name, addr)
+	return s.Listen(l)
 }
 
 func (s *ListenerService) Listen(l net.Listener) error {

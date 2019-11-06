@@ -9,14 +9,16 @@ import (
 
 type WebHandler struct {
 	hostname string
+	remote   *RemoteHandler
 	log      logger.Logger
 }
 
 var _ RequestHandler = (*WebHandler)(nil)
 
-func NewWebHandler(hostname string) *WebHandler {
+func NewWebHandler(hostname string, addr string) *WebHandler {
 	return &WebHandler{
 		hostname: hostname,
+		remote:   NewRemoteHandler(addr),
 		log:      logger.DefaultLogger,
 	}
 }
@@ -24,13 +26,10 @@ func NewWebHandler(hostname string) *WebHandler {
 func (h *WebHandler) HandleRequest(req *http.Request) (*http.Response, error) {
 	reqStr := requestToString(req)
 	if req.URL.Hostname() != h.hostname {
-		h.log.Info("Denying tunneling attempt:", reqStr)
+		h.log.Info("Denying access:", reqStr)
 		return ForbiddenHostResponse(req), nil
 	}
-	if req.URL.Path == "/" {
-		return RedirectResponse(req, "https://github.com/Frizz925/gbf-proxy"), nil
-	}
-	return StatusResponse(req, 404, "404 Not Found"), nil
+	return h.remote.HandleRequest(req)
 }
 
 func ForbiddenHostResponse(req *http.Request) *http.Response {
@@ -40,20 +39,5 @@ func ForbiddenHostResponse(req *http.Request) *http.Response {
 		StatusCode(403).
 		Status("403 Forbidden").
 		BodyString(message).
-		Build()
-}
-
-func RedirectResponse(req *http.Request, location string) *http.Response {
-	return httplib.NewResponseBuilder(req).
-		StatusCode(302).
-		Status("302 Found").
-		AddHeader("Location", location).
-		Build()
-}
-
-func StatusResponse(req *http.Request, statusCode int, status string) *http.Response {
-	return httplib.NewResponseBuilder(req).
-		StatusCode(statusCode).
-		Status(status).
 		Build()
 }

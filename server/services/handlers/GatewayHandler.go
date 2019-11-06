@@ -2,18 +2,15 @@ package handlers
 
 import (
 	"bufio"
-	"fmt"
+	connlib "gbf-proxy/lib/conn"
 	httplib "gbf-proxy/lib/http"
+	iolib "gbf-proxy/lib/io"
 	"gbf-proxy/lib/logger"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 )
-
-const BUFFER_SIZE = 4096
 
 type GatewayHandler struct {
 	proxyHandler RequestHandler
@@ -31,14 +28,9 @@ func NewGatewayHandler(proxyHandler RequestHandler, webHandler RequestHandler) *
 	return &GatewayHandler{
 		proxyHandler: proxyHandler,
 		webHandler:   webHandler,
-		pool: &sync.Pool{
-			New: func() interface{} {
-				return make([]byte, BUFFER_SIZE)
-			},
-		},
-		hostCache:  make(map[string]bool),
-		assetCache: make(map[string]bool),
-		log:        logger.DefaultLogger,
+		hostCache:    make(map[string]bool),
+		assetCache:   make(map[string]bool),
+		log:          logger.DefaultLogger,
 	}
 }
 
@@ -70,7 +62,7 @@ func (h *GatewayHandler) ForwardRequest(req *http.Request, r *bufio.Reader, w io
 	if h.RequestAllowed(req) {
 		if req.URL.Scheme != "http" || !h.AssetRequest(req) {
 			h.log.Info("Tunneling request:", reqStr)
-			return h.ForwardTunnel(req, req.URL, r, w)
+			return h.ForwardTunnel(req, r, w)
 		}
 	}
 	h.log.Info("Intercepting request:", reqStr)
@@ -86,8 +78,9 @@ func (h *GatewayHandler) ForwardIntercept(req *http.Request, w io.Writer) error 
 	return res.Write(w)
 }
 
-func (h *GatewayHandler) ForwardTunnel(req *http.Request, u *url.URL, r io.Reader, w io.Writer) error {
-	conn, err := createConnection(req.URL, u.Scheme)
+func (h *GatewayHandler) ForwardTunnel(req *http.Request, r io.Reader, w io.Writer) error {
+	u := req.URL
+	conn, err := connlib.CreateURLConnection(u)
 	if err != nil {
 		return err
 	}
@@ -98,14 +91,7 @@ func (h *GatewayHandler) ForwardTunnel(req *http.Request, u *url.URL, r io.Reade
 			return err
 		}
 	}
-	cerr := make(chan error, 1)
-	go func() {
-		cerr <- copyStream(h.pool, conn, w)
-	}()
-	go func() {
-		cerr <- copyStream(h.pool, r, conn)
-	}()
-	return <-cerr
+	return iolib.DuplexStream(conn, iolib.NewReadWriter(r, w))
 }
 
 func (h *GatewayHandler) HandleRequest(req *http.Request) (*http.Response, error) {
@@ -153,29 +139,4 @@ func (h *GatewayHandler) respondConnect(req *http.Request, w io.Writer) error {
 		Status("200 Connection Established").
 		Build().
 		Write(w)
-}
-
-func createConnection(u *url.URL, scheme string) (net.Conn, error) {
-	addr := getAddress(u, scheme)
-	return net.Dial("tcp4", addr)
-}
-
-func getAddress(u *url.URL, scheme string) string {
-	host := u.Hostname()
-	port := u.Port()
-	if port == "" {
-		if scheme == "https" {
-			port = "443"
-		} else {
-			port = "80"
-		}
-	}
-	return fmt.Sprintf("%s:%s", host, port)
-}
-
-func copyStream(pool *sync.Pool, r io.Reader, w io.Writer) error {
-	b := pool.Get().([]byte)
-	defer pool.Put(b)
-	_, err := io.CopyBuffer(w, r, b)
-	return err
 }
