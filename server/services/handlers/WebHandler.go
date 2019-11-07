@@ -27,6 +27,9 @@ func (h *WebHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http
 		ctx.Logger.Info("Denying access:", reqStr)
 		return ForbiddenHostResponse(req), nil
 	}
+	if u.Path == "/healthcheck" {
+		return HealthCheckOkResponse(req), nil
+	}
 	forwardedScheme := req.Header.Get("X-Forwarded-Scheme")
 	if forwardedScheme == "http" {
 		u.Scheme = "https"
@@ -44,6 +47,14 @@ func ForbiddenHostResponse(req *http.Request) *http.Response {
 		StatusCode(403).
 		Status("403 Forbidden").
 		BodyString(message).
+		Build()
+}
+
+func HealthCheckOkResponse(req *http.Request) *http.Response {
+	return httplib.NewResponseBuilder(req).
+		StatusCode(200).
+		Status("200 OK").
+		BodyString("OK").
 		Build()
 }
 
