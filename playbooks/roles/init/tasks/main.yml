@@ -11,18 +11,24 @@
   with_items:
     - haproxy
     - memcached
+    - nginx
   tags:
     - services
     - haproxy
     - memcached
-    - supervisord
+    - nginx
 - name: Configuring supervisord
   include: supervisord.yml
   tags:
     - services
     - supervisord
-- name: Setting up server
-  include: server.yml
+- name: Configuring nginx
+  include: nginx.yml
+  tags:
+    - services
+    - nginx
+- name: Configuring proxy
+  include: proxy.yml
   tags:
     - services
     - proxy
@@ -36,3 +42,10 @@
     name: supervisor
     state: started
     enabled: yes
+  tags:
+    - services
+    - supervisord
+- name: Configuring certbot
+  include: certbot.yml
+  tags:
+    - certbot
