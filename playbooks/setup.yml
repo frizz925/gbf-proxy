@@ -1,6 +1,6 @@
 - import_playbook: build.yml
 - name: Initialize cloud instance
-  hosts: gbf-proxy
+  hosts: gbfproxy
   become: yes
   gather_facts: no
   vars:
