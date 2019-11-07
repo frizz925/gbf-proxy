@@ -3,8 +3,9 @@ programs={{ server_names | join(',') }}
 
 {% for name in server_names %}
 [program:{{ name }}]
+user=www-data
 directory={{ remote_server_dir }}
-command={{ remote_server_dir }}/{{ name }} unix://{{ name }}.sock
+command={{ remote_server_dir }}/{{ name }} unix:{{ name }}.sock --web-hostname {{ hostname }} --web-address {{ nginx_listen }}
 autostart=true
 autorestart=true
 startsecs=5
@@ -12,14 +13,23 @@ startretries=3
 
 {% endfor %}
 [program:haproxy]
-command=/usr/sbin/haproxy -f /etc/haproxy/haproxy.cfg -n 50000 -N 50000
+command=/usr/sbin/haproxy -f {{ haproxy_cfg }} -n 50000 -N 50000
 autostart=true
 autorestart=true
-startsecs=15
+startsecs=3
 startretries=3
 
 [program:memcached]
-command=/usr/bin/memcached -u memcache -l 127.0.0.1 -m 512
+user=memcache
+command=/usr/bin/memcached -l 127.0.0.1 -m 512
+autostart=true
+autorestart=true
+startsecs=3
+startretries=3
+
+[program:nginx]
+user=www-data
+command=/usr/sbin/nginx -g "daemon off;" -c {{ nginx_conf }}
 autostart=true
 autorestart=true
 startsecs=3
