@@ -8,7 +8,8 @@
     update_cache: yes
     cache_valid_time: 86400
 - name: Checking for existing certificates
-  stat: path=live_certs
+  stat:
+    path: "{{ live_certs }}"
   register: live_certs_result
 - name: Stopping HAProxy
   supervisorctl:
@@ -39,3 +40,16 @@
   supervisorctl:
     name: haproxy
     state: started
+- name: Removing default certbot cron job
+  file:
+    path: /etc/cron.d/certbot
+    state: absent
+- name: Creating proxy certbot cron job
+  cron:
+    name: certbot
+    cron_file: proxy_certbot
+    job: certbot -q renew
+    weekday: "*"
+    hour: "*/12"
+    minute: "0"
+    user: root
