@@ -1,10 +1,10 @@
 - name: "Setting facts for {{ item }} server"
   set_fact:
     server_bin: "{{ server_dir }}/{{ item }}"
-- name: "Checking {{ item }} binary"
+- name: "Checking {{ item }} symlink"
   stat:
     path: "{{ server_bin }}"
-  register: old_server_bin
+  register: old_server_lnk
 - name: "Disabling server {{ item }} on HAProxy"
   haproxy:
     socket: "{{ haproxy_sock }}"
@@ -40,7 +40,11 @@
     wait: yes
     wait_interval: 3
     wait_retries: 10
+- name: "Checking {{ item }} binary"
+  stat:
+    path: "{{ server_bin }}"
+  register: new_server_lnk
 - name: "Adding {{ item }} binary to old files"
   set_fact:
-    old_proxy_bins: "{{ old_proxy_bins + [old_server_bin.stat.lnk_target] }}"
-  when: old_server_bin.stat.exists
+    old_proxy_bins: "{{ old_proxy_bins + [old_server_lnk.stat.lnk_target] }}"
+  when: old_server_lnk.stat.lnk_target != new_server_lnk.stat.lnk_target

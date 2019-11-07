@@ -12,6 +12,7 @@
 - name: Updating proxy servers
   include: proxy.yml
   with_items: "{{ server_names }}"
+  when: bin_upload.changed
 - name: Removing old proxy binaries
   file:
     path: "{{ item }}"
