@@ -21,10 +21,18 @@ func NewWebHandler(hostname string, addr string) *WebHandler {
 }
 
 func (h *WebHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+	u := req.URL
 	reqStr := requestToString(req)
-	if req.URL.Hostname() != h.hostname {
+	if u.Hostname() != h.hostname {
 		ctx.Logger.Info("Denying access:", reqStr)
 		return ForbiddenHostResponse(req), nil
+	}
+	forwardedScheme := req.Header.Get("X-Forwarded-Scheme")
+	if forwardedScheme == "http" {
+		u.Scheme = "https"
+		u.Host = u.Hostname()
+		ctx.Logger.Info("Redirecting to HTTPS site:", reqStr)
+		return RedirectResponse(req, req.URL.String()), nil
 	}
 	return h.remote.HandleRequest(req, ctx)
 }
@@ -36,5 +44,13 @@ func ForbiddenHostResponse(req *http.Request) *http.Response {
 		StatusCode(403).
 		Status("403 Forbidden").
 		BodyString(message).
+		Build()
+}
+
+func RedirectResponse(req *http.Request, location string) *http.Response {
+	return httplib.NewResponseBuilder(req).
+		StatusCode(301).
+		Status("301 Moved Permanently").
+		AddHeader("Location", location).
 		Build()
 }
