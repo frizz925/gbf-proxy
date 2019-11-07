@@ -1,3 +1,5 @@
+/production
+/staging
 vars.yml
 
 # Created by https://www.gitignore.io/api/ansible
