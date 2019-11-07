@@ -1,20 +1,12 @@
 hostname: gbf-proxy
 swap_file: /swap.img
 
-server_dir: "{{ playbook_dir }}/../server"
-remote_server_dir: "/opt/gbf-proxy"
-server_names:
-  - proxy-a
-  - proxy-b
-
-haproxy_dir: "/etc/haproxy"
 haproxy_cfg: "{{ haproxy_dir }}/haproxy.cfg"
 haproxy_cert: "{{ haproxy_dir }}/haproxy.pem"
-haproxy_sock: "{{ haproxy_dir }}/admin.sock"
 
-web_root: "{{ remote_server_dir }}/www"
+web_root: "{{ server_dir }}/www"
 web_redirect: http://game.granbluefantasy.jp/
 
-nginx_conf: "{{ remote_server_dir }}/nginx.conf"
-nginx_pid: "{{ remote_server_dir }}/nginx.sock"
-nginx_listen: "unix:{{ remote_server_dir }}/web.sock"
+nginx_conf: "{{ server_dir }}/nginx.conf"
+nginx_pid: "{{ server_dir }}/nginx.sock"
+nginx_listen: "unix:{{ server_dir }}/web.sock"

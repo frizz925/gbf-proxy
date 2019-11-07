@@ -1,5 +1,5 @@
 - import_playbook: build.yml
-- name: Initialize cloud instance
+- name: Update proxy server
   hosts: gbf-proxy
   become: yes
   gather_facts: no
@@ -9,4 +9,4 @@
     - common.yml
     - vars.yml
   roles:
-    - init
+    - update

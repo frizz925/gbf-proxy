@@ -1,0 +1,46 @@
+- name: "Setting facts for {{ item }} server"
+  set_fact:
+    server_bin: "{{ server_dir }}/{{ item }}"
+- name: "Checking {{ item }} binary"
+  stat:
+    path: "{{ server_bin }}"
+  register: old_server_bin
+- name: "Disabling server {{ item }} on HAProxy"
+  haproxy:
+    socket: "{{ haproxy_sock }}"
+    backend: proxy-servers
+    host: "{{ item }}"
+    state: disabled
+    wait: yes
+    wait_interval: 3
+    wait_retries: 10
+- name: "Stopping server {{ item }}"
+  supervisorctl:
+    name: "proxy:{{ item }}"
+    state: stopped
+- name: "Symlinking new binary for {{ item }}"
+  file:
+    src: "{{ bin_upload.dest }}"
+    dest: "{{ server_bin }}"
+    state: link
+    force: yes
+    owner: www-data
+    group: www-data
+    mode: 0755
+- name: "Starting server {{ item }}"
+  supervisorctl:
+    name: "proxy:{{ item }}"
+    state: started
+- name: "Enabling server {{ item }} on HAProxy"
+  haproxy:
+    socket: "{{ haproxy_sock }}"
+    backend: proxy-servers
+    host: "{{ item }}"
+    state: enabled
+    wait: yes
+    wait_interval: 3
+    wait_retries: 10
+- name: "Adding {{ item }} binary to old files"
+  set_fact:
+    old_proxy_bins: "{{ old_proxy_bins + [old_server_bin.stat.lnk_target] }}"
+  when: old_server_bin.stat.exists

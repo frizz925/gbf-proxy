@@ -37,7 +37,7 @@ backend proxy-servers
   balance roundrobin
   default-server check maxconn 1000
 {% for name in server_names %}
-  server {{ name }} unix@{{ remote_server_dir }}/{{ name }}.sock
+  server {{ name }} unix@{{ server_dir }}/{{ name }}.sock
 {% endfor %}
 
 listen stats
@@ -45,3 +45,5 @@ listen stats
   mode http
   stats enable
   stats uri /
+  stats refresh 10s
+  stats admin if LOCALHOST

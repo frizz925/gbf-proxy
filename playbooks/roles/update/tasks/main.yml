@@ -1,0 +1,19 @@
+- name: Setting facts for update
+  set_fact:
+    old_proxy_bins: []
+- name: Uploading new proxy binary
+  copy:
+    src: "{{ local_server_dir }}/bin/gbf-proxy"
+    dest: "{{ server_dir }}/proxy-{{ server_version }}"
+    owner: www-data
+    group: www-data
+    mode: 0755
+  register: bin_upload
+- name: Updating proxy servers
+  include: proxy.yml
+  with_items: "{{ server_names }}"
+- name: Removing old proxy binaries
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items: "{{ old_proxy_bins | unique }}"

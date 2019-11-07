@@ -4,8 +4,8 @@ programs={{ server_names | join(',') }}
 {% for name in server_names %}
 [program:{{ name }}]
 user=www-data
-directory={{ remote_server_dir }}
-command={{ remote_server_dir }}/{{ name }} unix:{{ name }}.sock --web-hostname {{ hostname }} --web-address {{ nginx_listen }}
+directory={{ server_dir }}
+command={{ server_dir }}/{{ name }} unix:{{ name }}.sock --web-hostname {{ hostname }} --web-address {{ nginx_listen }}
 autostart=true
 autorestart=true
 startsecs=5
