@@ -1,0 +1,35 @@
+- name: Installing certbot
+  apt:
+    name: certbot
+    state: latest
+    update_cache: yes
+    cache_valid_time: 86400
+- name: Checking for existing certificates
+  stat:
+    path: "/etc/letsencrypt/live/{{ hostname }}"
+  register: live_certs
+- name: Generating certificates
+  shell: >-
+    certbot certonly -n 
+    --webroot
+    -w {{ web_root }}
+    -d {{ hostname }}
+    --agree-tos
+    --email {{ email }}
+  when: not live_certs.stat.exists
+- name: Setting up certificate
+  shell: "cat fullchain.pem privkey.pem > {{ haproxy_cert }}"
+  args:
+    creates: "{{ haproxy_cert }}"
+    chdir: "{{ live_certs.stat.path }}"
+- name: Setting certificate permission
+  file:
+    path: "{{ haproxy_cert }}"
+    state: file
+    owner: haproxy
+    group: haproxy
+    mode: 0600
+- name: Restarting HAProxy
+  supervisorctl:
+    name: haproxy
+    state: restarted
