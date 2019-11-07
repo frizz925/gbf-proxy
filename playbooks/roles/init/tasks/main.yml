@@ -37,7 +37,7 @@
   tags:
     - services
     - haproxy
-- name: Restarting supervisord
+- name: Starting supervisord
   systemd:
     name: supervisor
     state: started
@@ -49,3 +49,8 @@
   include: certbot.yml
   tags:
     - certbot
+- name: Starting supervisord services
+  shell: supervisorctl start all
+  tags:
+    - services
+    - supervisord
