@@ -13,7 +13,7 @@ startretries=3
 
 {% endfor %}
 [program:haproxy]
-command=/usr/sbin/haproxy -f {{ haproxy_cfg }} -n 50000 -N 50000
+command=/usr/sbin/haproxy -f {{ haproxy_cfg }} -p {{ haproxy_pid }} -n 50000 -N 50000
 autostart=true
 autorestart=true
 startsecs=3

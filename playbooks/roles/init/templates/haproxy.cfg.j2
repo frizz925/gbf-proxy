@@ -1,4 +1,5 @@
 global
+  pidfile {{ haproxy_pid }}
   maxconn 50000
   log 127.0.0.1:514 local0 info
   user haproxy
@@ -15,18 +16,32 @@ defaults
   log global
   mode http
   option httplog
-
-listen proxy
   option forwardfor
+
+frontend http-frontend
   bind *:80
-  bind *:443 ssl crt {{ haproxy_cert }} ciphers EECDH+AESGCM:EDH+AESGCM no-sslv3 no-tlsv10 no-tlsv11
-  bind *:8088
-  balance roundrobin
-  default-server maxconn 1000
   http-request set-header X-Forwarded-Port %[dst_port]
-  http-request set-header X-Forwarded-Scheme http unless { ssl_fc }
+  http-request set-header X-Forwarded-Scheme http
+  default_backend proxy-servers
+
+frontend https-frontend
+  bind *:443 ssl crt {{ haproxy_cert }} ciphers EECDH+AESGCM:EDH+AESGCM no-sslv3 no-tlsv10 no-tlsv11
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request set-header X-Forwarded-Scheme https
+  default_backend proxy-servers
+
+frontend alt-frontend
+  bind *:8088
+  http-request set-header X-Forwarded-Port %[dst_port]
+  http-request set-header X-Forwarded-Scheme http
+  default_backend proxy-servers
+
+backend proxy-servers
+  balance roundrobin
+  option httpchk GET /healthcheck HTTP/1.1\r\nHost:\ {{ hostname }}
+  default-server maxconn 1000
 {% for name in server_names %}
-  server {{ name }} unix@{{ server_dir }}/{{ name }}.sock
+  server {{ name }} unix@{{ server_dir }}/{{ name }}.sock check
 {% endfor %}
 
 listen stats

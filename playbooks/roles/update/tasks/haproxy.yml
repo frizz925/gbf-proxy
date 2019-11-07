@@ -1,0 +1,15 @@
+- name: Generating new HAProxy configuration
+  template:
+    src: "{{ init_templates }}/haproxy.cfg.j2"
+    dest: "{{ haproxy_cfg }}"
+    owner: haproxy
+    group: haproxy
+    mode: 0644
+  register: haproxy_cfg_result
+- name: Reloading HAProxy configuration
+  shell: >-
+    /usr/sbin/haproxy -f {{ haproxy_cfg }} -c -q &&
+    /bin/kill -USR2 {{ item }}
+  with_file:
+    - "{{ haproxy_pid }}"
+  when: haproxy_cfg_result.changed
