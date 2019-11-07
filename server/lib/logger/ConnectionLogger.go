@@ -61,5 +61,5 @@ func (l *ConnectionLogger) Fatalf(format string, v ...interface{}) {
 
 func (l *ConnectionLogger) Sprintln(v ...interface{}) string {
 	remoteAddr := l.Conn.RemoteAddr().String()
-	return fmt.Sprintf("[%s] %s", remoteAddr, fmt.Sprintln(v...))
+	return fmt.Sprintf("[%s] %s", remoteAddr, fmt.Sprint(v...))
 }

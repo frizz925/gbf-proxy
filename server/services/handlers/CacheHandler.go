@@ -13,10 +13,16 @@ import (
 )
 
 type CacheHandler struct {
-	RequestHandler
-	cache.Client
+	handler   RequestHandler
+	cache     cache.Client
 	hostCache map[string]bool
-	log       logger.Logger
+}
+
+type CacheContext struct {
+	handler   RequestHandler
+	cache     cache.Client
+	hostCache map[string]bool
+	log       *logger.RequestLogger
 }
 
 type cachedResponse struct {
@@ -37,46 +43,54 @@ var _ RequestHandler = (*CacheHandler)(nil)
 
 func NewCacheHandler(rh RequestHandler, c cache.Client) *CacheHandler {
 	return &CacheHandler{
-		RequestHandler: rh,
-		Client:         c,
-		hostCache:      make(map[string]bool),
-		log:            logger.DefaultLogger,
+		handler:   rh,
+		cache:     c,
+		hostCache: make(map[string]bool),
 	}
 }
 
-func (h *CacheHandler) HandleRequest(req *http.Request) (*http.Response, error) {
-	if !h.shouldCacheRequest(req) {
-		return h.RequestHandler.HandleRequest(req)
+func (h *CacheHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+	return (CacheContext{
+		handler:   h.handler,
+		cache:     h.cache,
+		hostCache: h.hostCache,
+		log:       ctx.Logger,
+	}).HandleRequest(req, ctx)
+}
+
+func (c CacheContext) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+	if !c.shouldCacheRequest(req) {
+		return c.handler.HandleRequest(req, ctx)
 	}
 
-	key := h.getCacheKey(req.URL)
-	exists, err := h.Client.Has(key)
+	key := c.getCacheKey(req.URL)
+	exists, err := c.cache.Has(key)
 	if err != nil {
 		return nil, err
 	}
 	if exists {
-		h.log.Infof("Cache HIT: %s", key)
-		return h.getCache(key, req)
+		c.log.Infof("Cache HIT: %s", key)
+		return c.getCache(key, req)
 	}
 
-	h.log.Infof("Cache MISS: %s", key)
-	res, err := h.RequestHandler.HandleRequest(req)
+	c.log.Infof("Cache MISS: %s", key)
+	res, err := c.handler.HandleRequest(req, ctx)
 	if err != nil {
 		return nil, err
 	}
-	if !h.shouldCacheResponse(res) {
+	if !c.shouldCacheResponse(res) {
 		return res, nil
 	}
-	return h.putCacheAsync(key, req, res)
+	return c.putCacheAsync(key, req, res)
 }
 
-func (h *CacheHandler) shouldCacheRequest(req *http.Request) bool {
+func (c CacheContext) shouldCacheRequest(req *http.Request) bool {
 	if req.Method != "GET" {
 		return false
 	}
 
 	host := req.URL.Hostname()
-	if v, ok := h.hostCache[host]; ok {
+	if v, ok := c.hostCache[host]; ok {
 		return v
 	} else if strings.HasPrefix(host, "game-a") && strings.HasSuffix(host, ".granbluefantasy.jp") {
 		// do nothing
@@ -85,47 +99,47 @@ func (h *CacheHandler) shouldCacheRequest(req *http.Request) bool {
 	} else {
 		return false
 	}
-	h.hostCache[host] = true
+	c.hostCache[host] = true
 	return true
 }
 
-func (h *CacheHandler) shouldCacheResponse(res *http.Response) bool {
+func (c CacheContext) shouldCacheResponse(res *http.Response) bool {
 	return res.StatusCode >= 200 && res.StatusCode < 300
 }
 
-func (h *CacheHandler) getCache(key string, req *http.Request) (*http.Response, error) {
+func (c CacheContext) getCache(key string, req *http.Request) (*http.Response, error) {
 	cr := &cachedResponse{}
-	err := h.Client.Get(key, cr)
+	err := c.cache.Get(key, cr)
 	if err != nil {
 		return nil, err
 	}
 	return cr.unmarshal(req), nil
 }
 
-func (h *CacheHandler) putCacheAsync(key string, req *http.Request, res *http.Response) (*http.Response, error) {
+func (c CacheContext) putCacheAsync(key string, req *http.Request, res *http.Response) (*http.Response, error) {
 	cr, err := marshalResponse(res)
 	if err != nil {
 		return nil, err
 	}
 	go func() {
-		err := h.putCache(key, cr)
+		err := c.putCache(key, cr)
 		if err != nil {
-			h.log.Error(err)
+			c.log.Error(err)
 		}
 	}()
 	return cr.unmarshal(req), nil
 }
 
-func (h *CacheHandler) putCache(key string, cr *cachedResponse) error {
-	err := h.Client.Set(key, cr)
+func (c CacheContext) putCache(key string, cr *cachedResponse) error {
+	err := c.cache.Set(key, cr)
 	if err != nil {
 		return err
 	}
-	h.log.Infof("Cache PUT: %s", key)
+	c.log.Infof("Cache PUT: %s", key)
 	return nil
 }
 
-func (h *CacheHandler) getCacheKey(u *url.URL) string {
+func (c CacheContext) getCacheKey(u *url.URL) string {
 	query := u.RawQuery
 	if query == "" {
 		return u.Path

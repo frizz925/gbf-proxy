@@ -5,5 +5,5 @@ import (
 )
 
 type RequestHandler interface {
-	HandleRequest(*http.Request) (*http.Response, error)
+	HandleRequest(*http.Request, RequestContext) (*http.Response, error)
 }

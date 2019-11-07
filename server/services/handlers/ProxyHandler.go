@@ -1,13 +1,11 @@
 package handlers
 
 import (
-	"gbf-proxy/lib/logger"
 	"net/http"
 )
 
 type ProxyHandler struct {
 	*http.Client
-	log logger.Logger
 }
 
 var _ RequestHandler = (*ProxyHandler)(nil)
@@ -25,12 +23,11 @@ func NewProxyHandler(clients ...*http.Client) *ProxyHandler {
 	}
 	return &ProxyHandler{
 		Client: client,
-		log:    logger.DefaultLogger,
 	}
 }
 
-func (h *ProxyHandler) HandleRequest(req *http.Request) (*http.Response, error) {
-	h.log.Infof("Proxying request: %s %s", req.Method, req.URL.String())
+func (h *ProxyHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+	ctx.Logger.Info("Proxying request:", requestToString(req))
 	res, err := h.Client.Do(outgoingRequest(req))
 	if err != nil {
 		return nil, err

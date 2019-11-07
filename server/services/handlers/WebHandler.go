@@ -3,14 +3,12 @@ package handlers
 import (
 	"fmt"
 	httplib "gbf-proxy/lib/http"
-	"gbf-proxy/lib/logger"
 	"net/http"
 )
 
 type WebHandler struct {
 	hostname string
 	remote   *RemoteHandler
-	log      logger.Logger
 }
 
 var _ RequestHandler = (*WebHandler)(nil)
@@ -19,17 +17,16 @@ func NewWebHandler(hostname string, addr string) *WebHandler {
 	return &WebHandler{
 		hostname: hostname,
 		remote:   NewRemoteHandler(addr),
-		log:      logger.DefaultLogger,
 	}
 }
 
-func (h *WebHandler) HandleRequest(req *http.Request) (*http.Response, error) {
+func (h *WebHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
 	reqStr := requestToString(req)
 	if req.URL.Hostname() != h.hostname {
-		h.log.Info("Denying access:", reqStr)
+		ctx.Logger.Info("Denying access:", reqStr)
 		return ForbiddenHostResponse(req), nil
 	}
-	return h.remote.HandleRequest(req)
+	return h.remote.HandleRequest(req, ctx)
 }
 
 func ForbiddenHostResponse(req *http.Request) *http.Response {
