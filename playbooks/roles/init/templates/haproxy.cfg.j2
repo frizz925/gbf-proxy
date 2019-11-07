@@ -23,7 +23,7 @@ listen proxy
   bind *:8088
   balance roundrobin
   default-server maxconn 1000
-  http-request set-header X-Forwarded-Port %dst_port
+  http-request set-header X-Forwarded-Port %[dst_port]
   http-request set-header X-Forwarded-Scheme https if { ssl_fc }
 {% for name in server_names %}
   server {{ name }} unix@{{ server_dir }}/{{ name }}.sock
