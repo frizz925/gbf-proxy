@@ -32,7 +32,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&webHost, "web-host", webHost, "Web server hostname")
+	rootCmd.PersistentFlags().StringVar(&webHost, "web-hostname", webHost, "Web server hostname")
 	rootCmd.PersistentFlags().StringVar(&webAddr, "web-address", webAddr, "Web server address")
 	rootCmd.PersistentFlags().StringVarP(&memcachedAddr, "memcached", "m", memcachedAddr, "Memcached address")
 }
