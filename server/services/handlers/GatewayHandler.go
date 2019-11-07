@@ -7,6 +7,7 @@ import (
 	httplib "gbf-proxy/lib/http"
 	iolib "gbf-proxy/lib/io"
 	"gbf-proxy/lib/logger"
+	"gbf-proxy/lib/logger/formatters"
 	"io"
 	"net/http"
 	"strings"
@@ -42,7 +43,7 @@ func (h *GatewayHandler) Forward(r io.Reader, w io.Writer) error {
 	req = sanitizeRequest(req)
 	defer req.Body.Close()
 	return h.ForwardRequest(req, RequestContext{
-		Logger: logger.NewRequestLogger(req, logger.DefaultLogger),
+		Logger: h.CreateRequestLogger(req),
 	}, reader, w)
 }
 
@@ -139,6 +140,16 @@ func (h *GatewayHandler) AssetRequest(req *http.Request) bool {
 	}
 	h.assetCache[host] = true
 	return true
+}
+
+func (h *GatewayHandler) CreateRequestLogger(req *http.Request) *logger.Logger {
+	return &logger.Logger{
+		Printers: logger.DefaultPrinters,
+		Formatters: []formatters.LogFormatter{
+			formatters.NewRequestFormatter(req),
+			formatters.NewCallerFormatter(),
+		},
+	}
 }
 
 func (h *GatewayHandler) respondForbidden(req *http.Request, w io.Writer) error {

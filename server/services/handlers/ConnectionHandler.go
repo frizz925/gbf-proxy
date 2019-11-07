@@ -8,7 +8,7 @@ import (
 
 type ConnectionHandler struct {
 	StreamForwarder
-	logger.Logger
+	*logger.Logger
 }
 
 var _ ConnectionForwarder = (*ConnectionHandler)(nil)

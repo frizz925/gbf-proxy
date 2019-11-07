@@ -22,7 +22,7 @@ type CacheContext struct {
 	handler   RequestHandler
 	cache     cache.Client
 	hostCache map[string]bool
-	log       *logger.RequestLogger
+	log       *logger.Logger
 }
 
 type cachedResponse struct {
