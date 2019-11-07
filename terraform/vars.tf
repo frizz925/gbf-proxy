@@ -4,4 +4,5 @@ variable "vultr_api_key" {
 
 variable "bastion_cidr" {
   type = "string"
+  default = "0.0.0.0/0"
 }
