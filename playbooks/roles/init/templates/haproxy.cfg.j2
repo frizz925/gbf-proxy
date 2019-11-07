@@ -3,10 +3,13 @@ global
   log 127.0.0.1:514 local0 info
   user haproxy
   group haproxy
-  stats socket /run/haproxy/admin.sock user haproxy group haproxy mode 660
+  stats socket {{ haproxy_sock }} user haproxy group haproxy mode 660 level admin
   nbproc 1
   nbthread 4
   cpu-map auto:all 0-63
+  ssl-default-bind-options no-sslv3 no-tlsv10 no-tlsv11 no-tls-tickets
+  ssl-default-bind-ciphers EECDH+AESGCM:EDH+AESGCM
+  tune.ssl.default-dh-param 2048
 
 defaults
   timeout connect 10s
@@ -16,14 +19,29 @@ defaults
   mode http
   option httplog
 
-frontend edges
-  bind 0.0.0.0:80
-  bind 0.0.0.0:8088
-  default_backend proxy_servers
+frontend http-frontend
+  option httplog
+  option forwardfor
+  option http-server-close
+  option httpclose
+  bind *:80
+  bind *:443 ssl crt {{ haproxy_cert }} curves X25519:secp521r1:secp384r1:prime256v1 ciphers EECDH+AESGCM:EDH+AESGCM no-sslv3 no-tlsv10 no-tlsv11
+  default_backend proxy-servers
 
-backend proxy_servers
+frontend tcp-frontend
+  option tcplog
+  bind *:8088
+  default_backend proxy-servers
+
+backend proxy-servers
   balance roundrobin
-  default-server check maxconn 100
+  default-server check maxconn 1000
 {% for name in server_names %}
   server {{ name }} unix@{{ remote_server_dir }}/{{ name }}.sock
 {% endfor %}
+
+listen stats
+  bind :9000
+  mode http
+  stats enable
+  stats uri /
