@@ -1,0 +1,8 @@
+local_server_dir: "{{ playbook_dir }}/../server"
+server_dir: "/opt/gbf-proxy"
+server_names:
+  - proxy-a
+  - proxy-b
+
+haproxy_dir: "/etc/haproxy"
+haproxy_sock: "{{ haproxy_dir }}/admin.sock"

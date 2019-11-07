@@ -1,0 +1,23 @@
+- name: Creating proxy application directory
+  file:
+    path: "{{ server_dir }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: 0755
+- name: Copying server binary file
+  copy:
+    src: "{{ local_server_dir }}/bin/gbf-proxy"
+    dest: "{{ server_dir }}/proxy-{{ server_version }}"
+    owner: www-data
+    group: www-data
+    mode: 0755
+- name: Creating symlinks to the binary file
+  file:
+    src: "{{ server_dir }}/proxy-{{ server_version }}"
+    dest: "{{ server_dir }}/{{ item }}"
+    state: link
+    owner: www-data
+    group: www-data
+    mode: 0755
+  with_items: "{{ server_names }}"

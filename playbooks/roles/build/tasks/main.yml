@@ -1,0 +1,4 @@
+- name: Building server binary file
+  make:
+    chdir: "{{ local_server_dir }}"
+    target: build

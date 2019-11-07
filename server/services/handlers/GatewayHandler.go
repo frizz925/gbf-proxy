@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bufio"
+	"fmt"
 	connlib "gbf-proxy/lib/conn"
 	httplib "gbf-proxy/lib/http"
 	iolib "gbf-proxy/lib/io"
@@ -18,7 +19,6 @@ type GatewayHandler struct {
 	pool         *sync.Pool
 	hostCache    map[string]bool
 	assetCache   map[string]bool
-	log          logger.Logger
 }
 
 var _ StreamForwarder = (*GatewayHandler)(nil)
@@ -30,7 +30,6 @@ func NewGatewayHandler(proxyHandler RequestHandler, webHandler RequestHandler) *
 		webHandler:   webHandler,
 		hostCache:    make(map[string]bool),
 		assetCache:   make(map[string]bool),
-		log:          logger.DefaultLogger,
 	}
 }
 
@@ -40,13 +39,21 @@ func (h *GatewayHandler) Forward(r io.Reader, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return h.ForwardRequest(sanitizeRequest(req), reader, w)
+	req = sanitizeRequest(req)
+	defer req.Body.Close()
+	return h.ForwardRequest(req, RequestContext{
+		Logger: logger.NewRequestLogger(req, logger.DefaultLogger),
+	}, reader, w)
 }
 
-func (h *GatewayHandler) ForwardRequest(req *http.Request, r *bufio.Reader, w io.Writer) error {
+func (h *GatewayHandler) ForwardRequest(req *http.Request, ctx RequestContext, r *bufio.Reader, w io.Writer) error {
 	reqStr := requestToString(req)
 	if req.Method == "CONNECT" {
-		h.log.Info("Responding to CONNECT request:", reqStr)
+		ctx.Logger.Info("Responding to CONNECT request:", reqStr)
+		if !h.RequestAllowed(req) {
+			ctx.Logger.Info("Denying CONNECT request:", reqStr)
+			return h.respondForbidden(req, w)
+		}
 		err := h.respondConnect(req, w)
 		if err != nil {
 			return err
@@ -57,20 +64,21 @@ func (h *GatewayHandler) ForwardRequest(req *http.Request, r *bufio.Reader, w io
 				return err
 			}
 			req = sanitizeRequest(mergeRequests(req, nextReq))
+			defer req.Body.Close()
 		}
 	}
 	if h.RequestAllowed(req) {
 		if req.URL.Scheme != "http" || !h.AssetRequest(req) {
-			h.log.Info("Tunneling request:", reqStr)
+			ctx.Logger.Info("Tunneling request:", reqStr)
 			return h.ForwardTunnel(req, r, w)
 		}
 	}
-	h.log.Info("Intercepting request:", reqStr)
-	return h.ForwardIntercept(req, w)
+	ctx.Logger.Info("Intercepting request:", reqStr)
+	return h.ForwardIntercept(req, ctx, w)
 }
 
-func (h *GatewayHandler) ForwardIntercept(req *http.Request, w io.Writer) error {
-	res, err := h.HandleRequest(req)
+func (h *GatewayHandler) ForwardIntercept(req *http.Request, ctx RequestContext, w io.Writer) error {
+	res, err := h.HandleRequest(req, ctx)
 	if err != nil {
 		return err
 	}
@@ -94,14 +102,14 @@ func (h *GatewayHandler) ForwardTunnel(req *http.Request, r io.Reader, w io.Writ
 	return iolib.DuplexStream(conn, iolib.NewReadWriter(r, w))
 }
 
-func (h *GatewayHandler) HandleRequest(req *http.Request) (*http.Response, error) {
+func (h *GatewayHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
 	reqStr := requestToString(req)
 	if h.RequestAllowed(req) {
-		h.log.Info("Directing request to proxy handler:", reqStr)
-		return h.proxyHandler.HandleRequest(req)
+		ctx.Logger.Info("Directing request to proxy handler:", reqStr)
+		return h.proxyHandler.HandleRequest(req, ctx)
 	} else {
-		h.log.Info("Directing request to web handler:", reqStr)
-		return h.webHandler.HandleRequest(req)
+		ctx.Logger.Info("Directing request to web handler:", reqStr)
+		return h.webHandler.HandleRequest(req, ctx)
 	}
 }
 
@@ -131,6 +139,17 @@ func (h *GatewayHandler) AssetRequest(req *http.Request) bool {
 	}
 	h.assetCache[host] = true
 	return true
+}
+
+func (h *GatewayHandler) respondForbidden(req *http.Request, w io.Writer) error {
+	host := req.URL.Hostname()
+	message := fmt.Sprintf("Connection tunelling to host %s is not allowed", host)
+	return httplib.NewResponseBuilder(req).
+		StatusCode(403).
+		Status("403 Forbidden").
+		BodyString(message).
+		Build().
+		Write(w)
 }
 
 func (h *GatewayHandler) respondConnect(req *http.Request, w io.Writer) error {

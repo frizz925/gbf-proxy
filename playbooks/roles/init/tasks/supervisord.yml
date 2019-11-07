@@ -1,0 +1,12 @@
+- name: Stopping supervisord service
+  systemd:
+    name: supervisor
+    state: stopped
+    enabled: no
+- name: Generating supervisord configuration
+  template:
+    src: supervisord.conf.j2
+    dest: /etc/supervisor/conf.d/services.conf
+    owner: root
+    group: root
+    mode: 0644

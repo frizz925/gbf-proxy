@@ -1,0 +1,56 @@
+- name: Configuring system pakcages
+  include: packages.yml
+  tags:
+    - packages
+- name: Configuring swap memory
+  include: swap.yml
+  tags:
+    - swap
+- name: Configuring systemd services
+  include: systemd.yml
+  with_items:
+    - haproxy
+    - memcached
+    - nginx
+  tags:
+    - services
+    - haproxy
+    - memcached
+    - nginx
+- name: Configuring supervisord
+  include: supervisord.yml
+  tags:
+    - services
+    - supervisord
+- name: Configuring nginx
+  include: nginx.yml
+  tags:
+    - services
+    - nginx
+- name: Configuring proxy
+  include: proxy.yml
+  tags:
+    - services
+    - proxy
+- name: Configuring HAProxy
+  include: haproxy.yml
+  tags:
+    - services
+    - haproxy
+- name: Starting supervisord
+  systemd:
+    name: supervisor
+    state: started
+    enabled: yes
+  tags:
+    - services
+    - supervisord
+- name: Configuring certbot
+  include: certbot.yml
+  tags:
+    - certbot
+- name: Starting supervisord services
+  shell: supervisorctl start all
+  tags:
+    - services
+    - supervisord
