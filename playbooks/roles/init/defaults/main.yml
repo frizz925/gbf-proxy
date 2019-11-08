@@ -7,3 +7,5 @@ web_redirect: http://game.granbluefantasy.jp/
 nginx_conf: "{{ server_dir }}/nginx.conf"
 nginx_pid: "{{ server_dir }}/nginx.sock"
 nginx_listen: "unix:{{ server_dir }}/web.sock"
+
+memcache_mem: 768

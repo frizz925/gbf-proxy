@@ -21,7 +21,7 @@ startretries=3
 
 [program:memcached]
 user=memcache
-command=/usr/bin/memcached -l 127.0.0.1 -m 512
+command=/usr/bin/memcached -l 127.0.0.1 -m {{ memcache_mem }}
 autostart=true
 autorestart=true
 startsecs=3
