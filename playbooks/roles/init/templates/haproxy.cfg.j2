@@ -5,6 +5,7 @@ global
   user haproxy
   group haproxy
   stats socket {{ haproxy_sock }} user haproxy group haproxy mode 660 level admin
+  spread-checks 20
   ssl-default-bind-options no-sslv3 no-tlsv10 no-tlsv11 no-tls-tickets
   ssl-default-bind-ciphers EECDH+AESGCM:EDH+AESGCM
   tune.ssl.default-dh-param 2048
@@ -15,8 +16,10 @@ defaults
   timeout server 30s
   log global
   mode http
+  retries 3
   option httplog
   option forwardfor
+  option abortonclose
 
 frontend http-frontend
   bind *:80
@@ -41,7 +44,7 @@ backend proxy-servers
   option httpchk GET /healthcheck HTTP/1.1\r\nHost:\ {{ hostname }}
   default-server maxconn 1000
 {% for name in server_names %}
-  server {{ name }} unix@{{ server_dir }}/{{ name }}.sock check
+  server {{ name }} unix@{{ server_dir }}/{{ name }}.sock check inter 5s rise 3 fall 2
 {% endfor %}
 
 listen stats
@@ -49,5 +52,5 @@ listen stats
   mode http
   stats enable
   stats uri /
-  stats refresh 2s
+  stats refresh 5s
   stats admin if LOCALHOST
