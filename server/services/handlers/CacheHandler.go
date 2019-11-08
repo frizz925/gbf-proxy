@@ -66,14 +66,14 @@ func (c CacheContext) HandleRequest(req *http.Request, ctx RequestContext) (*htt
 	key := c.getCacheKey(req.URL)
 	exists, err := c.cache.Has(key)
 	if err != nil {
-		return nil, err
-	}
-	if exists {
-		c.log.Infof("Cache HIT: %s", key)
+		c.log.Error("Cache ERROR:", err)
+	} else if !exists {
+		c.log.Info("Cache MISS:", key)
+	} else {
+		c.log.Info("Cache HIT:", key)
 		return c.getCache(key, req)
 	}
 
-	c.log.Infof("Cache MISS: %s", key)
 	res, err := c.handler.HandleRequest(req, ctx)
 	if err != nil {
 		return nil, err
