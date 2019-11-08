@@ -6,10 +6,13 @@
     group: haproxy
     mode: 0644
   register: haproxy_cfg_result
-- name: Reloading HAProxy configuration
-  shell: >-
-    /usr/sbin/haproxy -f {{ haproxy_cfg }} -c -q &&
-    /bin/kill -USR2 {{ item }}
-  with_file:
-    - "{{ haproxy_pid }}"
+- block:
+    - name: Getting HAProxy PID
+      shell: supervisorctl pid haproxy
+      changed_when: false
+      register: haproxy_pid_sh
+    - name: Reloading HAProxy configuration
+      shell: >-
+        /usr/sbin/haproxy -f {{ haproxy_cfg }} -c -q &&
+        /bin/kill -USR2 {{ haproxy_pid_sh.stdout }}
   when: haproxy_cfg_result.changed

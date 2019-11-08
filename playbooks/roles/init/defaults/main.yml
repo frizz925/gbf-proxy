@@ -4,8 +4,4 @@ swap_file: /swap.img
 web_root: "{{ server_dir }}/www"
 web_redirect: http://game.granbluefantasy.jp/
 
-nginx_conf: "{{ server_dir }}/nginx.conf"
-nginx_pid: "{{ server_dir }}/nginx.sock"
-nginx_listen: "unix:{{ server_dir }}/web.sock"
-
-memcache_mem: 768
+nginx_pid: "{{ server_dir }}/nginx.pid"

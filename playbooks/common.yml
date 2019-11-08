@@ -10,3 +10,7 @@ haproxy_pid: "{{ haproxy_dir }}/haproxy.pid"
 haproxy_cert: "{{ haproxy_dir }}/haproxy.pem"
 haproxy_sock: "{{ haproxy_dir }}/admin.sock"
 
+nginx_conf: "{{ server_dir }}/nginx.conf"
+nginx_listen: "unix:{{ server_dir }}/web.sock"
+
+memcache_mem: 768
