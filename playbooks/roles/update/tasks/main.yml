@@ -6,3 +6,7 @@
   include: haproxy.yml
   tags:
     - haproxy
+- name: Updating supervisord
+  include: supervisord.yml
+  tags:
+    - supervisord

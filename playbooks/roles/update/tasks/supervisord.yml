@@ -1,0 +1,11 @@
+- name: Generating new supervisord configuration
+  template:
+    src: "{{ init_templates }}/supervisord.conf.j2"
+    dest: /etc/supervisor/conf.d/services.conf
+    owner: root
+    group: root
+    mode: 0644
+  register: supervisord_conf_result
+- name: Reloading supervisord configuration
+  shell: supervisorctl reload
+  when: supervisord_conf_result.changed
