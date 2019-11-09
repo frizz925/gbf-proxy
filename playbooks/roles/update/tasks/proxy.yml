@@ -10,7 +10,7 @@
     mode: 0755
   register: bin_upload
 - name: Updating proxy servers
-  include: bluegreen.yml
+  include_tasks: bluegreen.yml
   with_items: "{{ server_names }}"
   when: bin_upload.changed
 - name: Removing old proxy binaries
