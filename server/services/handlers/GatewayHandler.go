@@ -15,6 +15,7 @@ import (
 )
 
 type GatewayHandler struct {
+	version      string
 	proxyHandler RequestHandler
 	webHandler   RequestHandler
 	pool         *sync.Pool
@@ -25,8 +26,9 @@ type GatewayHandler struct {
 var _ StreamForwarder = (*GatewayHandler)(nil)
 var _ RequestHandler = (*GatewayHandler)(nil)
 
-func NewGatewayHandler(proxyHandler RequestHandler, webHandler RequestHandler) *GatewayHandler {
+func NewGatewayHandler(version string, proxyHandler RequestHandler, webHandler RequestHandler) *GatewayHandler {
 	return &GatewayHandler{
+		version:      version,
 		proxyHandler: proxyHandler,
 		webHandler:   webHandler,
 		hostCache:    make(map[string]bool),
@@ -155,7 +157,7 @@ func (h *GatewayHandler) CreateRequestLogger(req *http.Request) *logger.Logger {
 func (h *GatewayHandler) respondForbidden(req *http.Request, w io.Writer) error {
 	host := req.URL.Hostname()
 	message := fmt.Sprintf("Connection tunelling to host %s is not allowed", host)
-	return httplib.NewResponseBuilder(req).
+	return httplib.NewResponseBuilder(req, h.version).
 		StatusCode(403).
 		Status("403 Forbidden").
 		BodyString(message).
@@ -164,7 +166,7 @@ func (h *GatewayHandler) respondForbidden(req *http.Request, w io.Writer) error 
 }
 
 func (h *GatewayHandler) respondConnect(req *http.Request, w io.Writer) error {
-	return httplib.NewResponseBuilder(req).
+	return httplib.NewResponseBuilder(req, h.version).
 		StatusCode(200).
 		Status("200 Connection Established").
 		Build().

@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -13,20 +14,22 @@ type ResponseBuilderValues struct {
 	Request    *http.Request
 	Header     http.Header
 	Body       io.ReadCloser
+	Version    string
 }
 
 type ResponseBuilder struct {
 	Values ResponseBuilderValues
 }
 
-func NewResponseBuilder(req *http.Request) *ResponseBuilder {
+func NewResponseBuilder(req *http.Request, version string) *ResponseBuilder {
 	return &ResponseBuilder{
 		Values: ResponseBuilderValues{
 			StatusCode: 200,
 			Status:     "200 OK",
 			Request:    req,
-			Header:     CreateHeader(),
+			Header:     CreateHeader(version),
 			Body:       ioutil.NopCloser(&bytes.Buffer{}),
+			Version:    "",
 		},
 	}
 }
@@ -59,6 +62,11 @@ func (b *ResponseBuilder) Body(body io.ReadCloser) *ResponseBuilder {
 	return b
 }
 
+func (b *ResponseBuilder) Version(version string) *ResponseBuilder {
+	b.Values.Version = version
+	return b
+}
+
 func (b *ResponseBuilder) Build() *http.Response {
 	req := b.Values.Request
 	return &http.Response{
@@ -73,8 +81,9 @@ func (b *ResponseBuilder) Build() *http.Response {
 	}
 }
 
-func CreateHeader() http.Header {
+func CreateHeader(version string) http.Header {
 	header := make(http.Header)
-	header.Add("X-Proxy-Server", "Granblue Proxy")
+	proxyName := fmt.Sprintf("Granblue Proxy %s", version)
+	header.Add("X-Proxy-Server", proxyName)
 	return header
 }

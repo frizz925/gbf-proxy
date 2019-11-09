@@ -26,6 +26,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			listenerAddr := args[0]
 			err := (applications.MonolithicApp{
+				Version:       version,
 				WebHost:       webHost,
 				WebAddr:       webAddr,
 				ListenerAddr:  listenerAddr,

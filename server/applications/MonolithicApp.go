@@ -11,6 +11,7 @@ import (
 )
 
 type MonolithicApp struct {
+	Version       string
 	WebAddr       string
 	WebHost       string
 	MemcachedAddr string
@@ -28,10 +29,11 @@ func (a MonolithicApp) Start() error {
 
 	proxyHandler := handlers.NewProxyHandler()
 	cacheHandler := handlers.NewCacheHandler(proxyHandler, cacheClient)
-	webHandler := handlers.NewWebHandler(a.WebHost, a.WebAddr)
-	gatewayHandler := handlers.NewGatewayHandler(cacheHandler, webHandler)
+	webHandler := handlers.NewWebHandler(a.Version, a.WebHost, a.WebAddr)
+	gatewayHandler := handlers.NewGatewayHandler(a.Version, cacheHandler, webHandler)
 	connectionHandler := handlers.NewConnectionHandler(gatewayHandler)
 	service := services.NewListenerService("Proxy", connectionHandler)
 
+	log.Infof("Starting up Granblue Proxy %s", a.Version)
 	return service.Serve(a.ListenerAddr)
 }
