@@ -1,6 +1,6 @@
 - name: Setting facts for supervisord
   set_fact:
-    def_memcached_mem: "{{ ansible_memtotal_mb * memcached_mem_ratio | round | int }}"
+    def_memcached_mem: "{{ (ansible_memtotal_mb * memcached_mem_ratio) | round | int }}"
 - name: Generating supervisord configuration
   template:
     src: supervisord.conf.j2
