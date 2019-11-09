@@ -12,6 +12,13 @@
     owner: no
     group: no
   register: web_root_sync
+- name: Updating proxy auto-configuration file
+  template:
+    src: proxy.pac.j2
+    dest: "{{ web_root }}/proxy.pac"
+    owner: www-data
+    group: www-data
+    mode: 0644
 - name: Setting owners for the web root files
   file:
     path: "{{ web_root }}"
