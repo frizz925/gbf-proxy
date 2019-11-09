@@ -168,13 +168,22 @@ func marshalResponse(res *http.Response) (*cachedResponse, error) {
 }
 
 func (c *cachedResponse) unmarshal(req *http.Request) *http.Response {
+	header := c.Header
+	aclOrigin := header.Get("Access-Control-Allow-Origin")
+	if aclOrigin != "" {
+		reqOrigin := req.Header.Get("Origin")
+		if reqOrigin == "" {
+			reqOrigin = "*"
+		}
+		header.Set("Access-Control-Allow-Origin", reqOrigin)
+	}
 	return &http.Response{
 		Proto:            c.Proto,
 		ProtoMajor:       c.ProtoMajor,
 		ProtoMinor:       c.ProtoMinor,
 		Status:           c.Status,
 		StatusCode:       c.StatusCode,
-		Header:           c.Header,
+		Header:           header,
 		Body:             c.newReader(),
 		ContentLength:    c.ContentLength,
 		TransferEncoding: c.TransferEncoding,
