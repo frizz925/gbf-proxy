@@ -19,5 +19,5 @@ func NewRequestFormatter(req *http.Request) *RequestFormatter {
 
 func (f *RequestFormatter) Format(message string) string {
 	forwardedFor := f.Request.Header.Get("X-Forwarded-For")
-	return fmt.Sprintf("[%s] %s", forwardedFor, message)
+	return fmt.Sprintf("[%-15s] %s", forwardedFor, message)
 }

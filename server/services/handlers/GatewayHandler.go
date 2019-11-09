@@ -146,8 +146,8 @@ func (h *GatewayHandler) CreateRequestLogger(req *http.Request) *logger.Logger {
 	return &logger.Logger{
 		Printers: logger.DefaultPrinters,
 		Formatters: []formatters.LogFormatter{
-			formatters.NewRequestFormatter(req),
 			formatters.NewCallerFormatter(),
+			formatters.NewRequestFormatter(req),
 		},
 	}
 }
