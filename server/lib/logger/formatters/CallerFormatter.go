@@ -16,7 +16,7 @@ type CallerFormatter struct {
 var _ LogFormatter = (*CallerFormatter)(nil)
 
 var (
-	minimumCallerDepth = 2
+	minimumCallerDepth = 4
 	maximumCallerDepth = 25
 
 	packageCallerDepth = 10
@@ -41,10 +41,6 @@ func (f *CallerFormatter) getSource() string {
 		frames := runtime.CallersFrames(pcs[:depth])
 		callerDepth := 0
 		for f, ok := frames.Next(); ok; f, ok = frames.Next() {
-			if callerDepth < minimumCallerDepth {
-				callerDepth++
-				continue
-			}
 			if !strings.HasPrefix(f.Function, packageNamespace) {
 				break
 			}
