@@ -41,7 +41,7 @@ frontend alt-frontend
 
 backend proxy-servers
   balance roundrobin
-  option httpchk GET /healthcheck HTTP/1.1\r\nHost:\ {{ hostname }}
+  option httpchk GET /healthcheck HTTP/1.1\r\nHost:\ {{ hostname }}\r\nX-Forwarded-For:\ 127.0.0.1
   default-server maxconn 1000
 {% for name in server_names %}
   server {{ name }} unix@{{ server_dir }}/{{ name }}.sock check inter 5s rise 3 fall 2
