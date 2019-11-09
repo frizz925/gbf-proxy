@@ -1,7 +1,1 @@
-hostname: gbf-proxy
 swap_file: /swap.img
-
-web_root: "{{ server_dir }}/www"
-web_redirect: http://game.granbluefantasy.jp/
-
-nginx_pid: "{{ server_dir }}/nginx.pid"

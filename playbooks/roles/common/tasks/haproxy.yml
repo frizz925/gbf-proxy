@@ -1,0 +1,16 @@
+- name: Copying Syslog configuration
+  copy:
+    src: rsyslog.conf
+    dest: /etc/rsyslog.d/49-haproxy.conf
+    owner: root
+    group: root
+    mode: 0644
+  register: syslog_conf_result
+- name: Generating HAProxy configuration
+  template:
+    src: haproxy.cfg.j2
+    dest: "{{ haproxy_cfg }}"
+    owner: haproxy
+    group: haproxy
+    mode: 0644
+  register: haproxy_cfg_result

@@ -21,7 +21,7 @@ startretries=3
 
 [program:memcached]
 user=memcache
-command=/usr/bin/memcached -l 127.0.0.1 -m {{ memcache_mem }}
+command=/usr/bin/memcached -l 127.0.0.1 -m {{ memcached_mem | default(def_memcached_mem) }}
 autostart=true
 autorestart=true
 startsecs=3
@@ -29,7 +29,7 @@ startretries=3
 
 [program:nginx]
 user=www-data
-command=/usr/sbin/nginx -g "daemon off;" -c {{ nginx_conf }}
+command=/usr/sbin/nginx -g "daemon off; master_process on;" -c {{ nginx_conf }}
 autostart=true
 autorestart=true
 startsecs=3

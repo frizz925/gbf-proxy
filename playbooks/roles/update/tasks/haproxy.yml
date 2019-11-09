@@ -1,11 +1,7 @@
-- name: Generating new HAProxy configuration
-  template:
-    src: "{{ init_templates }}/haproxy.cfg.j2"
-    dest: "{{ haproxy_cfg }}"
-    owner: haproxy
-    group: haproxy
-    mode: 0644
-  register: haproxy_cfg_result
+- name: Running common HAProxy tasks
+  include_role:
+    name: common
+    tasks_from: haproxy
 - block:
     - name: Getting HAProxy PID
       shell: supervisorctl pid haproxy

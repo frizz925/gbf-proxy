@@ -1,14 +1,4 @@
-- name: Creating web root directory
-  file:
-    path: "{{ web_root }}"
-    state: directory
-    owner: www-data
-    group: www-data
-    mode: 0755
-- name: Generating nginx configuration
-  template:
-    src: nginx.conf.j2
-    dest: "{{ nginx_conf }}"
-    owner: www-data
-    group: www-data
-    mode: 0644
+- name: Running common nginx tasks
+  include_role:
+    name: common
+    tasks_from: nginx

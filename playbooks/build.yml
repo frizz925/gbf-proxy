@@ -1,8 +1,6 @@
 - name: Build binary file
   hosts: localhost
   gather_facts: no
-  vars_files:
-    - common.yml
   pre_tasks:
     - name: Getting server version
       shell: git describe --long --always --dirty
@@ -12,6 +10,7 @@
       set_fact:
         server_version: "{{ sh_server_version.stdout | trim }}"
   roles:
+    - common
     - build
   tags:
     - build

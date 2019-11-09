@@ -1,0 +1,31 @@
+- name: Creating web root directory
+  file:
+    path: "{{ web_root }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: 0755
+- name: Synchronizing web root directory
+  synchronize:
+    src: "{{ local_web_root }}/"
+    dest: "{{ web_root }}/"
+    owner: no
+    group: no
+  register: web_root_sync
+- name: Setting owners for the web root files
+  file:
+    path: "{{ web_root }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: 0755
+    recurse: yes
+  when: web_root_sync.changed
+- name: Generating nginx configuration
+  template:
+    src: nginx.conf.j2
+    dest: "{{ nginx_conf }}"
+    owner: www-data
+    group: www-data
+    mode: 0644
+  register: nginx_conf_result

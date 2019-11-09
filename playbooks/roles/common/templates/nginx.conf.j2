@@ -1,0 +1,32 @@
+worker_processes auto;
+pid {{ nginx_pid }};
+
+events {
+	worker_connections 768;
+}
+
+http {
+  sendfile on;
+	tcp_nopush on;
+	tcp_nodelay on;
+	keepalive_timeout 65;
+
+  include /etc/nginx/mime.types;
+	default_type application/octet-stream;
+
+  gzip on;
+
+  include /etc/nginx/conf.d/*.conf;
+
+  server {
+    listen {{ nginx_listen }} default_server;
+
+    root {{ web_root }};
+    index index.html index.htm;
+    server_name {{ hostname }};
+
+    location / {
+      try_files $uri $uri/ =404;
+    }
+  }
+}

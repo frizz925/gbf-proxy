@@ -1,3 +1,7 @@
+- name: Updating nginx
+  include: nginx.yml
+  tags:
+    - nginx
 - name: Updating proxy servers
   include: proxy.yml
   tags:

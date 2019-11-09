@@ -1,0 +1,14 @@
+- name: Running common nginx tasks
+  include_role:
+    name: common
+    tasks_from: nginx
+- block:
+    - name: Getting nginx PID
+      shell: supervisorctl pid nginx
+      changed_when: false
+      register: nginx_pid_sh
+    - name: Reloading new nginx configuration
+      shell: >-
+        /usr/sbin/nginx -g 'daemon off; master_process on;' -c {{ nginx_conf }} -t -q &&
+        /bin/kill -HUP "{{ nginx_pid_sh.stdout }}"
+  when: nginx_conf_result.changed

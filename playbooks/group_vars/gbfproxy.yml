@@ -1,13 +1,12 @@
-local_server_dir: "{{ playbook_dir }}/../server"
-local_web_root: "{{ playbook_dir }}/www"
-
 hostname: gbf-proxy
 server_dir: "/opt/gbf-proxy"
 server_names:
   - proxy-a
   - proxy-b
-
 haproxy_dir: "/etc/haproxy"
+local_server_dir: "{{ playbook_dir }}/../server"
+local_web_root: "{{ playbook_dir }}/www"
+
 haproxy_cfg: "{{ haproxy_dir }}/haproxy.cfg"
 haproxy_pid: "{{ haproxy_dir }}/haproxy.pid"
 haproxy_cert: "{{ haproxy_dir }}/haproxy.pem"

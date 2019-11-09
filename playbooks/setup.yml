@@ -2,11 +2,10 @@
 - name: Initialize cloud instance
   hosts: gbfproxy
   become: yes
-  gather_facts: no
   vars:
     server_version: "{{ hostvars['localhost']['server_version'] }}"
   vars_files:
-    - common.yml
     - vars.yml
   roles:
+    - common
     - init

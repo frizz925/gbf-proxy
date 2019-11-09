@@ -1,20 +1,9 @@
-- name: Copying Syslog configuration
-  copy:
-    src: rsyslog.conf
-    dest: /etc/rsyslog.d/49-haproxy.conf
-    owner: root
-    group: root
-    mode: 0644
-  register: syslog_config
+- name: Running common HAProxy tasks
+  include_role:
+    name: common
+    tasks_from: haproxy
 - name: Restarting Syslog service
   systemd:
     name: rsyslog
     state: restarted
-  when: syslog_config.changed
-- name: Generating HAProxy configuration
-  template:
-    src: haproxy.cfg.j2
-    dest: "{{ haproxy_cfg }}"
-    owner: haproxy
-    group: haproxy
-    mode: 0644
+  when: syslog_conf_result.changed

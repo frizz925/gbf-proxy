@@ -1,6 +1,8 @@
 - name: Installing required packages
   apt:
     name:
+      - sudo
+      - rsync
       - python
       - python-pip
       - python3
@@ -8,8 +10,8 @@
       - supervisor
       - haproxy
       - memcached
-      - rsyslog
       - nginx
+      - rsyslog
     update_cache: yes
     cache_valid_time: 86400
     state: latest
