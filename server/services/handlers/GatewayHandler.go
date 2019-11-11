@@ -72,7 +72,7 @@ func (h *GatewayHandler) ForwardRequest(req *http.Request, ctx RequestContext, r
 	}
 	if h.RequestAllowed(req) {
 		if req.URL.Scheme != "http" || !h.AssetRequest(req) {
-			ctx.Logger.Info("Tunnelling request:", reqStr)
+			ctx.Logger.Info("Tunneling request:", reqStr)
 			return h.ForwardTunnel(req, r, w)
 		}
 	}
