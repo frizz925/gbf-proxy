@@ -144,7 +144,7 @@ func (c CacheContext) getCacheKey(u *url.URL) string {
 	if query == "" {
 		return u.Path
 	}
-	return fmt.Sprintf("%s.%s", u.Path, query)
+	return fmt.Sprintf("%s?%s", u.Path, query)
 }
 
 func marshalResponse(res *http.Response) (*cachedResponse, error) {
