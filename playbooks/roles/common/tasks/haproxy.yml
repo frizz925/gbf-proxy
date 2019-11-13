@@ -1,11 +1,24 @@
-- name: Copying Syslog configuration
+- name: Copying rsyslog configuration
   copy:
     src: rsyslog.conf
     dest: /etc/rsyslog.d/49-haproxy.conf
     owner: root
     group: root
     mode: 0644
-  register: syslog_conf_result
+  register: rsyslog_conf_result
+- name: Restarting rsyslog
+  systemd:
+    name: rsyslog
+    state: restarted
+  when: rsyslog_conf_result.changed
+- name: Copying logrotate configuration
+  copy:
+    src: logrotate
+    dest: /etc/logrotate.d/haproxy
+    owner: root
+    group: root
+    mode: 0644
+  register: logrotate_conf_result
 - name: Generating HAProxy configuration
   template:
     src: haproxy.cfg.j2
