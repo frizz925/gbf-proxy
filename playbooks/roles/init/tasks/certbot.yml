@@ -49,7 +49,7 @@
   cron:
     name: certbot
     cron_file: proxy_certbot
-    job: certbot -q renew
+    job: "certbot -q renew --webroot -w {{ web_root }}"
     weekday: "*"
     hour: "*/12"
     minute: "0"
