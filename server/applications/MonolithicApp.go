@@ -25,7 +25,7 @@ var log = logger.DefaultLogger
 func (a MonolithicApp) Start() error {
 	memcachedClient := memcache.New(a.MemcachedAddr)
 	msgpackMarshaler := marshaler.NewMsgpackMarshaler()
-	cacheClient := cache.NewMemcachedClient(memcachedClient, msgpackMarshaler)
+	cacheClient := cache.NewMemcached(memcachedClient, msgpackMarshaler)
 
 	proxyHandler := handlers.NewProxyHandler()
 	cacheHandler := handlers.NewCacheHandler(proxyHandler, cacheClient)
@@ -35,5 +35,10 @@ func (a MonolithicApp) Start() error {
 	service := services.NewListenerService("Proxy", connectionHandler)
 
 	log.Infof("Starting up Granblue Proxy %s", a.Version)
+	err := cacheClient.Start()
+	if err != nil {
+		return err
+	}
+	defer cacheClient.Shutdown()
 	return service.Serve(a.ListenerAddr)
 }

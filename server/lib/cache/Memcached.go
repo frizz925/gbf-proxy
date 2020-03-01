@@ -8,21 +8,29 @@ import (
 
 const DEFAULT_MEMCACHED_EXPIRATION = 86400
 
-type MemcachedClient struct {
+type Memcached struct {
 	*memcache.Client
 	marshaler.Marshaler
 }
 
-var _ Client = (*MemcachedClient)(nil)
+var _ Client = (*Memcached)(nil)
 
-func NewMemcachedClient(mc *memcache.Client, m marshaler.Marshaler) *MemcachedClient {
-	return &MemcachedClient{
+func NewMemcached(mc *memcache.Client, m marshaler.Marshaler) *Memcached {
+	return &Memcached{
 		Client:    mc,
 		Marshaler: m,
 	}
 }
 
-func (c *MemcachedClient) Get(key string, value interface{}) error {
+func (c *Memcached) Start() error {
+	return nil
+}
+
+func (c *Memcached) Shutdown() error {
+	return nil
+}
+
+func (c *Memcached) Get(key string, value interface{}) error {
 	item, err := c.Client.Get(key)
 	if err != nil {
 		return err
@@ -30,7 +38,7 @@ func (c *MemcachedClient) Get(key string, value interface{}) error {
 	return c.Marshaler.Unmarshal(item.Value, value)
 }
 
-func (c *MemcachedClient) Set(key string, value interface{}) error {
+func (c *Memcached) Set(key string, value interface{}) error {
 	b, err := c.Marshaler.Marshal(value)
 	if err != nil {
 		return err
@@ -42,7 +50,7 @@ func (c *MemcachedClient) Set(key string, value interface{}) error {
 	})
 }
 
-func (c *MemcachedClient) Has(key string) (bool, error) {
+func (c *Memcached) Has(key string) (bool, error) {
 	_, err := c.Client.Get(key)
 	if err != nil {
 		if err == memcache.ErrCacheMiss {
