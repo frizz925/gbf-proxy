@@ -22,7 +22,7 @@ func NewRemoteHandler(addr string) *RemoteHandler {
 	}
 }
 
-func (h *RemoteHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+func (h *RemoteHandler) HandleRequest(req *http.Request, ctx *RequestContext) (*http.Response, error) {
 	conn, err := h.CreateConnection()
 	if err != nil {
 		return nil, err

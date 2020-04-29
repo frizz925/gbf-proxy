@@ -1,6 +1,7 @@
 package cache
 
 type Client interface {
+	Name() string
 	Start() error
 	Shutdown() error
 

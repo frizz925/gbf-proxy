@@ -49,7 +49,7 @@ func NewCacheHandler(rh RequestHandler, c cache.Client) *CacheHandler {
 	}
 }
 
-func (h *CacheHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+func (h *CacheHandler) HandleRequest(req *http.Request, ctx *RequestContext) (*http.Response, error) {
 	return (CacheContext{
 		handler:   h.handler,
 		cache:     h.cache,
@@ -58,7 +58,7 @@ func (h *CacheHandler) HandleRequest(req *http.Request, ctx RequestContext) (*ht
 	}).HandleRequest(req, ctx)
 }
 
-func (c CacheContext) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+func (c CacheContext) HandleRequest(req *http.Request, ctx *RequestContext) (*http.Response, error) {
 	if !c.shouldCacheRequest(req) {
 		return c.handler.HandleRequest(req, ctx)
 	}
@@ -66,11 +66,11 @@ func (c CacheContext) HandleRequest(req *http.Request, ctx RequestContext) (*htt
 	key := c.getCacheKey(req.URL)
 	exists, err := c.cache.Has(key)
 	if err != nil {
-		c.log.Error("Cache ERROR:", err)
+		c.log.Errorf("Cache %s ERROR: %s", c.cache.Name(), err.Error())
 	} else if !exists {
-		c.log.Info("Cache MISS:", key)
+		c.log.Infof("Cache %s MISS: %s", c.cache.Name(), key)
 	} else {
-		c.log.Info("Cache HIT:", key)
+		c.log.Infof("Cache %s HIT: %s", c.cache.Name(), key)
 		return c.getCache(key, req)
 	}
 
@@ -135,7 +135,7 @@ func (c CacheContext) putCache(key string, cr *cachedResponse) error {
 	if err != nil {
 		return err
 	}
-	c.log.Infof("Cache PUT: %s", key)
+	c.log.Infof("Cache %s PUT: %s", c.cache.Name(), key)
 	return nil
 }
 

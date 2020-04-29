@@ -96,9 +96,10 @@ func (l *Logger) Sprintf(level string, format string, v ...interface{}) string {
 }
 
 func (l *Logger) Format(level string, message string) string {
+	prefix := ""
 	for _, f := range l.Formatters {
-		message = f.Format(message)
+		prefix, message = f.Format(prefix, message)
 	}
-	message = fmt.Sprintf("[%-5s] %s", level, message)
-	return message
+	prefix = strings.TrimSpace(prefix)
+	return fmt.Sprintf("[%-5s] %s %s", level, prefix, message)
 }

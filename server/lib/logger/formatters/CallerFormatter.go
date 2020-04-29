@@ -30,8 +30,8 @@ func NewCallerFormatter() *CallerFormatter {
 	}
 }
 
-func (f *CallerFormatter) Format(message string) string {
-	return fmt.Sprintf("[%s] %s", f.getSource(), message)
+func (f *CallerFormatter) Format(prefix string, message string) (string, string) {
+	return fmt.Sprintf("%s [%s]", prefix, f.getSource()), message
 }
 
 func (f *CallerFormatter) getSource() string {

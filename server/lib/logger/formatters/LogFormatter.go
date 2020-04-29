@@ -1,5 +1,5 @@
 package formatters
 
 type LogFormatter interface {
-	Format(string) string
+	Format(prefix string, message string) (string, string)
 }

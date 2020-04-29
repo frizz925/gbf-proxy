@@ -22,7 +22,7 @@ func NewWebHandler(version string, hostname string, addr string) *WebHandler {
 	}
 }
 
-func (h *WebHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+func (h *WebHandler) HandleRequest(req *http.Request, ctx *RequestContext) (*http.Response, error) {
 	u := req.URL
 	reqStr := requestToString(req)
 	if u.Hostname() != h.hostname {

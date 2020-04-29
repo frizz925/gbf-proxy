@@ -26,7 +26,7 @@ func NewProxyHandler(clients ...*http.Client) *ProxyHandler {
 	}
 }
 
-func (h *ProxyHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+func (h *ProxyHandler) HandleRequest(req *http.Request, ctx *RequestContext) (*http.Response, error) {
 	ctx.Logger.Info("Proxying request:", requestToString(req))
 	res, err := h.Client.Do(outgoingRequest(req))
 	if err != nil {

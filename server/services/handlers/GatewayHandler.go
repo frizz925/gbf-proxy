@@ -9,6 +9,7 @@ import (
 	"gbf-proxy/lib/logger"
 	"gbf-proxy/lib/logger/formatters"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -44,12 +45,12 @@ func (h *GatewayHandler) Forward(r io.Reader, w io.Writer) error {
 	}
 	req = sanitizeRequest(req)
 	defer req.Body.Close()
-	return h.ForwardRequest(req, RequestContext{
-		Logger: h.CreateRequestLogger(req),
+	return h.ForwardRequest(req, &RequestContext{
+		Logger: h.CreateRequestLogger(r, req),
 	}, reader, w)
 }
 
-func (h *GatewayHandler) ForwardRequest(req *http.Request, ctx RequestContext, r *bufio.Reader, w io.Writer) error {
+func (h *GatewayHandler) ForwardRequest(req *http.Request, ctx *RequestContext, r *bufio.Reader, w io.Writer) error {
 	reqStr := requestToString(req)
 	if req.Method == "CONNECT" {
 		ctx.Logger.Info("Responding to CONNECT request:", reqStr)
@@ -80,7 +81,7 @@ func (h *GatewayHandler) ForwardRequest(req *http.Request, ctx RequestContext, r
 	return h.ForwardIntercept(req, ctx, w)
 }
 
-func (h *GatewayHandler) ForwardIntercept(req *http.Request, ctx RequestContext, w io.Writer) error {
+func (h *GatewayHandler) ForwardIntercept(req *http.Request, ctx *RequestContext, w io.Writer) error {
 	res, err := h.HandleRequest(req, ctx)
 	if err != nil {
 		return err
@@ -105,7 +106,7 @@ func (h *GatewayHandler) ForwardTunnel(req *http.Request, r io.Reader, w io.Writ
 	return iolib.DuplexStream(conn, iolib.NewReadWriter(r, w))
 }
 
-func (h *GatewayHandler) HandleRequest(req *http.Request, ctx RequestContext) (*http.Response, error) {
+func (h *GatewayHandler) HandleRequest(req *http.Request, ctx *RequestContext) (*http.Response, error) {
 	reqStr := requestToString(req)
 	if h.RequestAllowed(req) {
 		ctx.Logger.Info("Directing request to proxy handler:", reqStr)
@@ -120,9 +121,9 @@ func (h *GatewayHandler) RequestAllowed(req *http.Request) bool {
 	host := req.URL.Hostname()
 	if v, ok := h.hostCache[host]; ok {
 		return v
-	} else if strings.HasPrefix(host, "game") && strings.HasSuffix(host, ".granbluefantasy.jp") {
+	} else if strings.HasSuffix(host, ".granbluefantasy.jp") {
 		// do nothing
-	} else if strings.HasPrefix(host, "gbf.game") && strings.HasSuffix(host, ".mbga.jp") {
+	} else if strings.HasSuffix(host, ".mbga.jp") {
 		// do nothing
 	} else if strings.HasSuffix(host, ".mobage.jp") {
 		// do nothing
@@ -144,12 +145,16 @@ func (h *GatewayHandler) AssetRequest(req *http.Request) bool {
 	return true
 }
 
-func (h *GatewayHandler) CreateRequestLogger(req *http.Request) *logger.Logger {
+func (h *GatewayHandler) CreateRequestLogger(reader io.Reader, req *http.Request) *logger.Logger {
+	var conn net.Conn = nil
+	if tmp, ok := reader.(net.Conn); ok {
+		conn = tmp
+	}
 	return &logger.Logger{
 		Printers: logger.DefaultPrinters,
 		Formatters: []formatters.LogFormatter{
 			formatters.NewCallerFormatter(),
-			formatters.NewRequestFormatter(req),
+			formatters.NewRequestFormatter(conn, req),
 		},
 	}
 }
