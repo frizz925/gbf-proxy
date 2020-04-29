@@ -1,0 +1,9 @@
+#!/bin/bash
+
+WEB_ROOT="{{ web_root }}"
+LIVE_CERTS="{{ live_certs }}"
+HAPROXY_CERT="{{ haproxy_cert }}"
+
+certbot -q renew --webroot -w "$WEB_ROOT"
+cat "$LIVE_CERTS/fullchain.pem" "$LIVE_CERTS/privkey.pem" > "$HAPROXY_CERT"
+supervisorctl restart haproxy
