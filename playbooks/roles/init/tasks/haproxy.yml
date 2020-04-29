@@ -2,8 +2,8 @@
   include_role:
     name: common
     tasks_from: haproxy
-- name: Restarting Syslog service
+- name: Restarting rsyslog service
   systemd:
     name: rsyslog
     state: restarted
-  when: syslog_conf_result.changed
+  when: rsyslog_conf_result.changed

@@ -1,6 +1,7 @@
 - name: Setting certbot facts
   set_fact:
     live_certs: "/etc/letsencrypt/live/{{ hostname }}"
+    renew_script_path: "{{ server_dir }}/renew-cert.sh"
 - name: Installing certbot
   apt:
     name: certbot
@@ -45,11 +46,18 @@
   file:
     path: /etc/cron.d/certbot
     state: absent
+- name: Creating proxy certbot script
+  template:
+    src: renew-cert.sh.j2
+    dest: "{{ renew_script_path }}"
+    owner: root
+    group: root
+    mode: 0755
 - name: Creating proxy certbot cron job
   cron:
     name: certbot
     cron_file: proxy_certbot
-    job: "certbot -q renew --webroot -w {{ web_root }}"
+    job: "bash {{ renew_script_path }}"
     weekday: "*"
     hour: "*/12"
     minute: "0"
