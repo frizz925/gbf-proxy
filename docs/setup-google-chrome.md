@@ -19,7 +19,7 @@ Finally, create a new *switch profile* with the following configuration.
 
 **1b. Creating PAC profile**
 
-Just create a new *PAC profile* with the following PAC URL: [https://raw.githubusercontent.com/Frizz925/gbf-proxy/master/web/gbf-proxy.pac](https://raw.githubusercontent.com/Frizz925/gbf-proxy/master/web/gbf-proxy.pac)
+Just create a new *PAC profile* with the following PAC URL: [https://gbf-proxy.kogane.moe/proxy.pac](https://gbf-proxy.kogane.moe/proxy.pac)
 
 ![Profile activation](https://raw.githubusercontent.com/Frizz925/gbf-proxy/master/res/proxyswitch-3.png)
 
