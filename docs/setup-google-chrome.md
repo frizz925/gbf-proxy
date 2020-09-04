@@ -5,7 +5,9 @@ There are two ways to set this up:
 - Using switch profile
 - Using PAC profile
 
-In this case, it's highly recommended to use the *switch profile* because it's just more configureable.
+~In this case, it's highly recommended to use the *switch profile* because it's just more configureable.~
+
+It is now preferred to use the PAC profile for better setup convenience.
 
 **1a. Creating switch profile**
 
